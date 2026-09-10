@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>심심타임 - 잠깐 한 판</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🫘</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./css/hub.css" />
+  </head>
+  <body>
+    <div class="sky">
+      <span class="cloud c1"></span>
+      <span class="cloud c2"></span>
+      <span class="cloud c3"></span>
+      <span class="bean b1"></span>
+      <span class="bean b2"></span>
+      <span class="bean b3"></span>
+      <span class="bean b4"></span>
+    </div>
+
+    <header class="hero">
+      <p class="badge">사무실 · 교실 · 5분만</p>
+      <h1>심심타임</h1>
+      <p class="tagline">잠깐 머리 식히고 싶을 때, 귀여운 미니게임 한 판</p>
+    </header>
+
+    <main class="grid">
+      <a class="card playable" href="./games/bean-run/index.html">
+        <div class="preview bean-preview" aria-hidden="true">
+          <div class="track"></div>
+          <div class="mini-bean pink"></div>
+          <div class="mini-bean mint"></div>
+          <div class="mini-bean lemon"></div>
+          <div class="arch"></div>
+        </div>
+        <div class="meta">
+          <span class="pill live">플레이 가능</span>
+          <h2>빈런</h2>
+          <p>폴가이즈를 한 판으로 줄인 8인 장애물 레이스. AI 콩들과 골인까지 달리세요.</p>
+          <ul>
+            <li>8인</li>
+            <li>약 1분</li>
+            <li>점프 · 슬라이딩</li>
+          </ul>
+        </div>
+        <span class="go">지금 달리기 →</span>
+      </a>
+
+      <article class="card locked">
+        <div class="preview soon-preview a" aria-hidden="true"></div>
+        <div class="meta">
+          <span class="pill">준비 중</span>
+          <h2>짝짝 카드</h2>
+          <p>기억력 카드 뒤집기. 곧 만나요!</p>
+        </div>
+      </article>
+
+      <article class="card locked">
+        <div class="preview soon-preview b" aria-hidden="true"></div>
+        <div class="meta">
+          <span class="pill">준비 중</span>
+          <h2>똑딱 반응</h2>
+          <p>반응속도 테스트. 곧 만나요!</p>
+        </div>
+      </article>
+    </main>
+
+    <footer>
+      <p>게임은 하나씩 추가될 예정이에요. 오늘은 빈런 한 판!</p>
+    </footer>
+  </body>
+</html>
