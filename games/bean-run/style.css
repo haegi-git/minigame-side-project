@@ -15,22 +15,32 @@ body,
 #game-root {
   width: 100%;
   height: 100%;
+  height: 100dvh;
   overflow: hidden;
   background: #9ad8ff;
   font-family: "Gowun Dodum", sans-serif;
   color: var(--ink);
+  overscroll-behavior: none;
 }
 
 #view {
   display: block;
   width: 100%;
   height: 100%;
+  touch-action: none;
+}
+
+button,
+.back,
+.mute,
+.ghost {
+  touch-action: manipulation;
 }
 
 .back,
 .mute {
   position: absolute;
-  top: 16px;
+  top: max(12px, env(safe-area-inset-top));
   z-index: 8;
   border: 3px solid var(--ink);
   background: #fffdf8;
@@ -44,11 +54,11 @@ body,
 }
 
 .back {
-  left: 16px;
+  left: max(12px, env(safe-area-inset-left));
 }
 
 .mute {
-  right: 16px;
+  right: max(12px, env(safe-area-inset-right));
   font-size: 16px;
 }
 
@@ -324,4 +334,102 @@ button,
 
 .board .place {
   font-family: "Jua", sans-serif;
+}
+
+.touch-only {
+  display: none;
+}
+
+.touch-ui {
+  display: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 0 max(16px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom))
+    max(16px, env(safe-area-inset-left));
+  pointer-events: none;
+}
+
+.stick {
+  pointer-events: auto;
+  width: 124px;
+  height: 124px;
+  border-radius: 50%;
+  border: 3px solid var(--ink);
+  background: rgba(255, 253, 248, 0.5);
+  position: relative;
+  touch-action: none;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.stick-knob {
+  position: absolute;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: var(--pink);
+  border: 3px solid var(--ink);
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.touch-actions {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.touch-btn {
+  min-width: 86px;
+  height: 70px;
+  font-size: 16px;
+  background: var(--lemon);
+  box-shadow: 3px 3px 0 var(--ink);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.touch-btn.slide {
+  background: var(--pink);
+}
+
+.touch-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+
+@media (hover: none), (pointer: coarse) {
+  .touch-ui:not(.hidden) {
+    display: flex;
+  }
+  .touch-only {
+    display: list-item;
+  }
+  .kb-only,
+  #hud-keys {
+    display: none !important;
+  }
+  .hud {
+    top: max(12px, env(safe-area-inset-top));
+    width: min(520px, calc(100% - 24px));
+  }
+  .panel {
+    padding: 20px 16px 18px;
+  }
+  .panel h1 {
+    font-size: 44px;
+  }
+}
+
+@media (max-width: 640px) and (pointer: fine) {
+  .hud {
+    width: min(520px, calc(100% - 24px));
+  }
 }

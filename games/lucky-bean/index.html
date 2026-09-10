@@ -2,7 +2,7 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>럭키콩 - 심심타임</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🫘</text></svg>" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -49,8 +49,9 @@
             <b>1,500</b>으로 시작해 <b>10,000</b>이면 승리, 콩알이 100 미만이면 파산이에요.
           </p>
           <ul class="controls">
-            <li><kbd>W A S D</kbd> 광장 이동</li>
-            <li><kbd>E</kbd> NPC에게 말걸기</li>
+            <li class="kb-only"><kbd>W A S D</kbd> 광장 이동</li>
+            <li class="kb-only"><kbd>E</kbd> NPC에게 말걸기</li>
+            <li class="touch-only">왼쪽 스틱으로 이동 · 오른쪽 버튼으로 말걸기</li>
             <li>번 돈으로 모자 · 악세사리 구매</li>
           </ul>
           <button id="btn-start" type="button">광장으로</button>
@@ -138,6 +139,13 @@
           </div>
         </div>
       </section>
+
+      <div id="touch-ui" class="touch-ui hidden" aria-hidden="true">
+        <div class="stick" id="stick">
+          <div class="stick-knob"></div>
+        </div>
+        <button type="button" id="btn-talk" class="touch-btn talk">말걸기</button>
+      </div>
     </div>
     <script type="module" src="./game.js"></script>
   </body>

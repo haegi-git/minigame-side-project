@@ -2,7 +2,7 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
     <title>월간보고_초안.xlsx</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='8' fill='%23217346'/><text x='32' y='44' text-anchor='middle' font-size='36' font-family='Segoe UI, sans-serif' fill='white'>S</text></svg>" />
     <link rel="stylesheet" href="./style.css" />
@@ -66,8 +66,12 @@
           id="type-input"
           type="text"
           autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
           spellcheck="false"
-          placeholder="셀에 문장을 입력한 뒤 Enter 또는 입력 완료"
+          enterkeyhint="send"
+          inputmode="text"
+          placeholder="문장 입력 후 완료"
           disabled
         />
         <button type="button" id="btn-enter" class="enter-btn" disabled>✓</button>

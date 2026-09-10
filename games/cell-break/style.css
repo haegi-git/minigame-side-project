@@ -7,9 +7,11 @@
 html,
 body {
   height: 100%;
+  height: 100dvh;
   background: #c8c8c8;
   font-family: "Segoe UI", "Malgun Gothic", sans-serif;
   color: #1f1f1f;
+  overscroll-behavior: none;
 }
 
 button,
@@ -24,6 +26,7 @@ a {
 
 .app {
   height: 100%;
+  height: var(--vvh, 100dvh);
   display: grid;
   grid-template-rows: 32px 28px 52px 28px 1fr 44px 22px 28px;
   background: #fff;
@@ -286,7 +289,7 @@ a {
   border: 0;
   outline: none;
   padding: 0 12px;
-  font-size: 15px;
+  font-size: 16px;
   background: #fff;
 }
 
@@ -521,21 +524,49 @@ a {
     top: 102px;
   }
   .app {
-    grid-template-rows: 32px 0 70px 52px 1fr 48px 22px 28px;
+    grid-template-rows: 32px 0 auto auto 1fr 52px 22px 28px;
   }
   .menubar {
     display: none;
+  }
+  .ribbon {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 10px;
+  }
+  .rib-btn {
+    padding: 8px 12px;
+    font-size: 14px;
   }
   .prompt {
     white-space: normal;
     overflow: auto;
     text-overflow: unset;
+    min-height: 44px;
+    font-size: 15px;
+    line-height: 1.45;
+  }
+  .formula {
+    align-items: flex-start;
   }
   .stats-strip {
     flex-wrap: wrap;
     gap: 8px;
   }
   .sheet-main {
-    min-width: 560px;
+    min-width: 480px;
+  }
+  .type-dock {
+    grid-template-columns: 44px 1fr 56px;
+    min-height: 52px;
+  }
+  .enter-btn {
+    font-size: 22px;
+  }
+  .sheet-tabs {
+    overflow-x: auto;
+  }
+  .statusbar {
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }

@@ -26,6 +26,7 @@ const NAMES = ["나", "콩이", "뭉치", "토실", "뽀송", "말랑", "쪼꼬"
 const COLORS = [0xff7eb3, 0x7ce7c4, 0xffe066, 0x8ec5ff, 0xd4b3ff, 0xffb085, 0x9bf6ff, 0xbaf55b];
 
 const keys = new Set();
+const stick = { nx: 0, ny: 0, active: false, jump: false, slide: false };
 const tmp = new THREE.Vector3();
 const tmp2 = new THREE.Vector3();
 const tmp3 = new THREE.Vector3();
@@ -823,6 +824,10 @@ function wishDir(r) {
     if (keys.has("KeyD") || keys.has("ArrowRight")) x -= 1;
     if (keys.has("KeyW") || keys.has("ArrowUp")) z += 1;
     if (keys.has("KeyS") || keys.has("ArrowDown")) z -= 1;
+    if (stick.active) {
+      x += -stick.nx;
+      z += -stick.ny;
+    }
     tmp.set(x, 0, z);
     if (tmp.lengthSq() > 1) tmp.normalize();
     return tmp;
@@ -1106,8 +1111,8 @@ function updateRacer(r, dt) {
   const wishLen = wishX * wishX + wishZ * wishZ;
 
   if (r.me && moving) {
-    if (keys.has("Space")) tryJump(r, true);
-    if (keys.has("ShiftLeft") || keys.has("ShiftRight")) trySlide(r, true);
+    if (keys.has("Space") || stick.jump) tryJump(r, true);
+    if (keys.has("ShiftLeft") || keys.has("ShiftRight") || stick.slide) trySlide(r, true);
   }
 
   const maxSpd = r.sliding ? SLIDE_SPEED : r.onGround ? RUN_SPEED * r.skill : r.me ? AIR_SPEED * r.skill : RUN_SPEED * r.skill;
@@ -1371,6 +1376,7 @@ function tick(now) {
     if (racers[0].finished) {
       state = "done";
       hud.classList.add("hidden");
+      document.getElementById("touch-ui")?.classList.add("hidden");
       setTimeout(showResults, 650);
     }
   }
@@ -1390,8 +1396,69 @@ window.addEventListener("keydown", (e) => {
   if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) e.preventDefault();
 });
 window.addEventListener("keyup", (e) => keys.delete(e.code));
-window.addEventListener("blur", () => keys.clear());
+window.addEventListener("blur", () => {
+  keys.clear();
+  stick.jump = false;
+  stick.slide = false;
+});
 window.addEventListener("resize", onResize);
+
+function bindStick(root) {
+  if (!root) return;
+  const knob = root.querySelector(".stick-knob");
+  const max = 42;
+  let pid = null;
+  const end = () => {
+    pid = null;
+    stick.nx = 0;
+    stick.ny = 0;
+    stick.active = false;
+    if (knob) knob.style.transform = "translate(-50%, -50%)";
+  };
+  const setFrom = (cx, cy) => {
+    const r = root.getBoundingClientRect();
+    const dx = cx - (r.left + r.width / 2);
+    const dy = cy - (r.top + r.height / 2);
+    const len = Math.hypot(dx, dy) || 1;
+    const k = Math.min(1, len / max);
+    stick.nx = (dx / len) * k;
+    stick.ny = (dy / len) * k;
+    stick.active = k > 0.14;
+    if (knob) knob.style.transform = `translate(calc(-50% + ${stick.nx * max}px), calc(-50% + ${stick.ny * max}px))`;
+  };
+  root.addEventListener("pointerdown", (e) => {
+    pid = e.pointerId;
+    root.setPointerCapture(e.pointerId);
+    setFrom(e.clientX, e.clientY);
+    e.preventDefault();
+  });
+  root.addEventListener("pointermove", (e) => {
+    if (e.pointerId !== pid) return;
+    setFrom(e.clientX, e.clientY);
+  });
+  root.addEventListener("pointerup", end);
+  root.addEventListener("pointercancel", end);
+}
+
+function bindHold(el, prop) {
+  if (!el) return;
+  const down = (e) => {
+    e.preventDefault();
+    stick[prop] = true;
+  };
+  const up = () => {
+    stick[prop] = false;
+  };
+  el.addEventListener("pointerdown", down);
+  el.addEventListener("pointerup", up);
+  el.addEventListener("pointercancel", up);
+  el.addEventListener("lostpointercapture", up);
+}
+
+bindStick(document.getElementById("stick"));
+bindHold(document.getElementById("btn-jump"), "jump");
+bindHold(document.getElementById("btn-slide"), "slide");
+canvas.addEventListener("touchmove", (e) => e.preventDefault(), { passive: false });
 
 function applyDifficulty(id) {
   const diff = DIFFICULTIES[id] || DIFFICULTIES.normal;
@@ -1420,6 +1487,7 @@ document.getElementById("btn-start").addEventListener("click", () => {
   sfx.boot();
   startEl.classList.add("hidden");
   hud.classList.remove("hidden");
+  document.getElementById("touch-ui")?.classList.remove("hidden");
   state = "countdown";
   countEl.classList.remove("hidden");
   const seq = ["3", "2", "1", "GO"];

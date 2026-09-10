@@ -87,6 +87,7 @@ const STALLS = [
 ];
 
 const keys = new Set();
+const stick = { nx: 0, ny: 0, active: false };
 const canvas = document.getElementById("view");
 const hud = document.getElementById("hud");
 const startEl = document.getElementById("start");
@@ -474,11 +475,13 @@ function updateHud() {
 
 function setNear(stall) {
   nearStall = stall;
+  const talk = document.getElementById("btn-talk");
+  if (talk) talk.classList.toggle("ready", !!stall);
   if (!stall || phase !== "play") {
     promptEl.classList.add("hidden");
     return;
   }
-  promptEl.textContent = stall.id === "shop" ? "E · 꾸미기 상점" : `E · ${stall.title}`;
+  promptEl.textContent = stall.id === "shop" ? "상점" : stall.title;
   promptEl.classList.remove("hidden");
 }
 
@@ -564,6 +567,7 @@ function finish(won) {
   playEl.classList.add("hidden");
   shopEl.classList.add("hidden");
   hud.classList.add("hidden");
+  document.getElementById("touch-ui")?.classList.add("hidden");
   resultEl.classList.remove("hidden");
   document.getElementById("result-title").textContent = won ? "한탕 성공!" : "파산...";
   document.getElementById("result-sub").textContent = won
@@ -917,6 +921,10 @@ function tick(now) {
     if (keys.has("KeyD") || keys.has("ArrowRight")) ix += 1;
     if (keys.has("KeyW") || keys.has("ArrowUp")) iz -= 1;
     if (keys.has("KeyS") || keys.has("ArrowDown")) iz += 1;
+    if (stick.active) {
+      ix += stick.nx;
+      iz += stick.ny;
+    }
     if (ix || iz) {
       const len = Math.hypot(ix, iz);
       ix /= len;
@@ -933,7 +941,7 @@ function tick(now) {
     }
 
     let closest = null;
-    let best = 2.15;
+    let best = 2.45;
     for (const n of npcs) {
       const d = Math.hypot(player.pos.x - n.pos.x, player.pos.z - n.pos.z);
       if (d < best) {
@@ -985,11 +993,56 @@ window.addEventListener("resize", () => {
   renderer.setSize(innerWidth, innerHeight);
 });
 
+function bindStick(root) {
+  if (!root) return;
+  const knob = root.querySelector(".stick-knob");
+  const max = 42;
+  let pid = null;
+  const end = () => {
+    pid = null;
+    stick.nx = 0;
+    stick.ny = 0;
+    stick.active = false;
+    if (knob) knob.style.transform = "translate(-50%, -50%)";
+  };
+  const setFrom = (cx, cy) => {
+    const r = root.getBoundingClientRect();
+    const dx = cx - (r.left + r.width / 2);
+    const dy = cy - (r.top + r.height / 2);
+    const len = Math.hypot(dx, dy) || 1;
+    const k = Math.min(1, len / max);
+    stick.nx = (dx / len) * k;
+    stick.ny = (dy / len) * k;
+    stick.active = k > 0.14;
+    if (knob) knob.style.transform = `translate(calc(-50% + ${stick.nx * max}px), calc(-50% + ${stick.ny * max}px))`;
+  };
+  root.addEventListener("pointerdown", (e) => {
+    pid = e.pointerId;
+    root.setPointerCapture(e.pointerId);
+    setFrom(e.clientX, e.clientY);
+    e.preventDefault();
+  });
+  root.addEventListener("pointermove", (e) => {
+    if (e.pointerId !== pid) return;
+    setFrom(e.clientX, e.clientY);
+  });
+  root.addEventListener("pointerup", end);
+  root.addEventListener("pointercancel", end);
+}
+
+bindStick(document.getElementById("stick"));
+document.getElementById("btn-talk")?.addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+  interact();
+});
+canvas.addEventListener("touchmove", (e) => e.preventDefault(), { passive: false });
+
 promptEl.addEventListener("click", interact);
 document.getElementById("btn-start").addEventListener("click", () => {
   sfx.boot();
   startEl.classList.add("hidden");
   hud.classList.remove("hidden");
+  document.getElementById("touch-ui")?.classList.remove("hidden");
   phase = "play";
 });
 document.getElementById("btn-cancel").addEventListener("click", closePlay);

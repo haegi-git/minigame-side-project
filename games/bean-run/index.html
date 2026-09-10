@@ -2,7 +2,7 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>빈런 - 심심타임</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🫘</text></svg>" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -49,9 +49,10 @@
           <h1>빈런</h1>
           <p class="lead">말랑콩 8명이 장애물을 넘어 골인까지 달려요. 약 1분, AI와 함께하는 미니 폴가이즈!</p>
           <ul class="controls">
-            <li><kbd>W A S D</kbd> 또는 <kbd>↑ ← ↓ →</kbd> 이동 · 달리기</li>
-            <li><kbd>Space</kbd> 점프</li>
-            <li><kbd>Shift</kbd> 슬라이딩 · <span id="slide-cd-label">1.75초</span> 쿨타임</li>
+            <li class="kb-only"><kbd>W A S D</kbd> 또는 <kbd>↑ ← ↓ →</kbd> 이동 · 달리기</li>
+            <li class="kb-only"><kbd>Space</kbd> 점프</li>
+            <li class="kb-only"><kbd>Shift</kbd> 슬라이딩 · <span id="slide-cd-label">1.75초</span> 쿨타임</li>
+            <li class="touch-only">왼쪽 스틱으로 이동 · 오른쪽 점프 / 슬라이드</li>
           </ul>
           <p class="diff-label">난이도 · 슬라이딩 쿨타임</p>
           <div class="diff-row" role="radiogroup" aria-label="난이도">
@@ -87,6 +88,16 @@
           </div>
         </div>
       </section>
+
+      <div id="touch-ui" class="touch-ui hidden" aria-hidden="true">
+        <div class="stick" id="stick">
+          <div class="stick-knob"></div>
+        </div>
+        <div class="touch-actions">
+          <button type="button" id="btn-jump" class="touch-btn">점프</button>
+          <button type="button" id="btn-slide" class="touch-btn slide">슬라이드</button>
+        </div>
+      </div>
     </div>
     <script type="module" src="./game.js"></script>
   </body>

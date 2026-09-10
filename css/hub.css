@@ -222,6 +222,11 @@ h1 {
   transition: transform 0.16s ease, box-shadow 0.16s ease;
 }
 
+a.card {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
 a.card:hover {
   transform: translate(-4px, -6px);
   box-shadow: 12px 16px 0 #2b2140;
@@ -491,6 +496,22 @@ footer {
 
 @media (max-width: 640px) {
   .hero {
-    padding-top: 40px;
+    padding-top: max(36px, env(safe-area-inset-top));
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  h1 {
+    font-size: clamp(44px, 14vw, 72px);
+  }
+  .grid {
+    width: min(1080px, calc(100% - 20px));
+    gap: 16px;
+  }
+  .go {
+    min-height: 44px;
+    align-items: center;
+  }
+  footer {
+    padding-bottom: max(28px, env(safe-area-inset-bottom));
   }
 }

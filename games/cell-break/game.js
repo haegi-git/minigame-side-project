@@ -455,3 +455,13 @@ function paintStatsDummy() {
   updateHud();
   els.prompt.textContent = "매크로 실행 후 문장이 이 수식 표시줄에 나타납니다.";
 }
+
+function syncViewport() {
+  const vv = window.visualViewport;
+  const h = vv ? Math.round(vv.height) : window.innerHeight;
+  document.documentElement.style.setProperty("--vvh", `${h}px`);
+}
+syncViewport();
+window.addEventListener("resize", syncViewport);
+window.visualViewport?.addEventListener("resize", syncViewport);
+window.visualViewport?.addEventListener("scroll", syncViewport);
