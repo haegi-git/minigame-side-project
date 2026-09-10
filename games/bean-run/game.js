@@ -10,8 +10,17 @@ const FRICTION = 9.5;
 const GRAVITY = -36;
 const JUMP_V = 13.2;
 const SLIDE_DUR = 0.48;
-const SLIDE_COOLDOWN = 2.5;
+const AI_SLIDE_COOLDOWN = 2.5;
 const RADIUS = 0.46;
+const DIFFICULTIES = {
+  easy: { cd: 1, label: "1초", name: "이지" },
+  normal: { cd: 1.75, label: "1.75초", name: "노말" },
+  hard: { cd: 2.5, label: "2.5초", name: "하드" },
+};
+const DIFF_KEY = "bean-run-diff";
+
+let slideCooldown = DIFFICULTIES.normal.cd;
+let difficultyId = "normal";
 
 const NAMES = ["나", "콩이", "뭉치", "토실", "뽀송", "말랑", "쪼꼬", "하리"];
 const COLORS = [0xff7eb3, 0x7ce7c4, 0xffe066, 0x8ec5ff, 0xd4b3ff, 0xffb085, 0x9bf6ff, 0xbaf55b];
@@ -1066,7 +1075,7 @@ function trySlide(r, play) {
   if (r.slideCd > 0 || r.finished || state !== "racing") return;
   r.sliding = true;
   r.slideT = SLIDE_DUR;
-  r.slideCd = SLIDE_COOLDOWN;
+  r.slideCd = r.me ? slideCooldown : AI_SLIDE_COOLDOWN;
   const fwd = r.vel.z >= 0 ? 1 : -1;
   r.vel.z += 5.8 * fwd * (r.me ? 1 : r.skill);
   if (play) sfx.slide();
@@ -1307,7 +1316,7 @@ function updateHud() {
   timeEl.textContent = formatTime(raceTime);
   progressEl.style.width = `${THREE.MathUtils.clamp((me.pos.z / FINISH_Z) * 100, 0, 100)}%`;
   const ready = me.slideCd <= 0;
-  slideFill.style.width = ready ? "100%" : `${((SLIDE_COOLDOWN - me.slideCd) / SLIDE_COOLDOWN) * 100}%`;
+  slideFill.style.width = ready ? "100%" : `${((slideCooldown - me.slideCd) / slideCooldown) * 100}%`;
   slideHint.textContent = ready ? "준비됨" : `${me.slideCd.toFixed(1)}초`;
   slideCdEl.classList.toggle("ready", ready);
 }
@@ -1384,6 +1393,29 @@ window.addEventListener("keyup", (e) => keys.delete(e.code));
 window.addEventListener("blur", () => keys.clear());
 window.addEventListener("resize", onResize);
 
+function applyDifficulty(id) {
+  const diff = DIFFICULTIES[id] || DIFFICULTIES.normal;
+  difficultyId = DIFFICULTIES[id] ? id : "normal";
+  slideCooldown = diff.cd;
+  sessionStorage.setItem(DIFF_KEY, difficultyId);
+  const label = document.getElementById("slide-cd-label");
+  const keysLine = document.getElementById("hud-keys");
+  if (label) label.textContent = diff.label;
+  if (keysLine) {
+    keysLine.textContent = `방향키 / WASD 이동 · 스페이스 점프 · Shift 슬라이딩 (${diff.label} 쿨타임)`;
+  }
+  document.querySelectorAll(".diff-btn").forEach((btn) => {
+    const on = btn.dataset.diff === difficultyId;
+    btn.classList.toggle("selected", on);
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+}
+
+document.querySelectorAll(".diff-btn").forEach((btn) => {
+  btn.addEventListener("click", () => applyDifficulty(btn.dataset.diff));
+});
+applyDifficulty(sessionStorage.getItem(DIFF_KEY) || "normal");
+
 document.getElementById("btn-start").addEventListener("click", () => {
   sfx.boot();
   startEl.classList.add("hidden");
@@ -1423,6 +1455,12 @@ window.__beanRun = {
   },
   get time() {
     return raceTime;
+  },
+  get difficulty() {
+    return difficultyId;
+  },
+  get slideCooldown() {
+    return slideCooldown;
   },
   snapshot() {
     return racers.map((r) => ({

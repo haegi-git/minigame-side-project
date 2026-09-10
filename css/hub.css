@@ -303,6 +303,33 @@ a.card:hover {
   background: linear-gradient(135deg, #c8f4e0, #cde8ff);
 }
 
+.cell-preview {
+  background: #eef6f1;
+}
+
+.mini-sheet {
+  position: absolute;
+  inset: 18px 22px 14px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  border: 3px solid #2b2140;
+  background: #fff;
+}
+
+.mini-sheet span {
+  border-right: 2px solid #cfe3d8;
+  border-bottom: 2px solid #cfe3d8;
+}
+
+.mini-sheet span.g {
+  background: #217346;
+}
+
+.mini-sheet span.d {
+  background: #163d28;
+}
+
 .meta {
   padding: 16px 18px 8px;
 }

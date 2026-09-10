@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>월간보고_초안.xlsx</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='8' fill='%23217346'/><text x='32' y='44' text-anchor='middle' font-size='36' font-family='Segoe UI, sans-serif' fill='white'>S</text></svg>" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div id="app" class="app">
+      <header class="titlebar">
+        <span class="app-mark">S</span>
+        <p class="filename" id="filename">월간보고_초안.xlsx</p>
+        <div class="win-btns">
+          <a class="win-btn" href="../../index.html" title="닫기">×</a>
+        </div>
+      </header>
+
+      <nav class="menubar">
+        <span>파일</span>
+        <span class="on">홈</span>
+        <span>삽입</span>
+        <span>데이터</span>
+        <span>수식</span>
+        <span>보기</span>
+      </nav>
+
+      <div class="ribbon">
+        <div class="rib-group">
+          <button type="button" id="btn-clear" class="rib-btn">지우기</button>
+          <button type="button" id="btn-send" class="rib-btn primary" disabled>입력 완료</button>
+          <button type="button" id="btn-pause" class="rib-btn" disabled title="Esc">일시 중지</button>
+        </div>
+        <div class="rib-group stats-strip" id="game-strip">
+          <span>내 체력 <b id="hp-me">100</b></span>
+          <span>대상 체력 <b id="hp-foe">0</b></span>
+          <span>단계 <b id="stage-label">1/6</b></span>
+          <span>다음 차감 <b id="atk-timer">10.0</b>초</span>
+        </div>
+        <div class="rib-group stats-strip hidden" id="work-strip">
+          <span>셀 합계 <b>1,284,330</b></span>
+          <span>평균 <b>107,027</b></span>
+          <span>필터 <b>적용됨</b></span>
+        </div>
+      </div>
+
+      <div class="formula">
+        <span class="fx">fx</span>
+        <div id="prompt" class="prompt" aria-live="polite"></div>
+      </div>
+
+      <div class="sheet-wrap">
+        <div class="sheet">
+          <aside class="row-heads" id="row-heads"></aside>
+          <div class="sheet-main">
+            <div class="col-heads" id="col-heads"></div>
+            <div class="grid" id="grid"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="type-dock">
+        <label class="cell-ref">B18</label>
+        <input
+          id="type-input"
+          type="text"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="셀에 문장을 입력한 뒤 Enter 또는 입력 완료"
+          disabled
+        />
+        <button type="button" id="btn-enter" class="enter-btn" disabled>✓</button>
+      </div>
+
+      <footer class="statusbar">
+        <span id="status-left">준비</span>
+        <span>평균 타수 <b id="wpm">0</b></span>
+        <span>성공 <b id="clears">0</b>문장</span>
+        <a class="hub-link" href="../../index.html">심심타임</a>
+      </footer>
+
+      <div class="sheet-tabs">
+        <button type="button" class="tab on" data-stage="0">실적1</button>
+        <button type="button" class="tab" data-stage="1">실적2</button>
+        <button type="button" class="tab" data-stage="2">실적3</button>
+        <button type="button" class="tab" data-stage="3">실적4</button>
+        <button type="button" class="tab" data-stage="4">실적5</button>
+        <button type="button" class="tab" data-stage="5">실적6</button>
+        <span class="plus">+</span>
+      </div>
+    </div>
+
+    <div id="cover" class="cover hidden" aria-hidden="true">
+      <div class="fake-sheet">
+        <div class="fake-row head">
+          <span>부서</span><span>1월</span><span>2월</span><span>3월</span><span>합계</span><span>전월비</span>
+        </div>
+        <div class="fake-row"><span>영업1팀</span><span>12,400</span><span>13,110</span><span>12,980</span><span>38,490</span><span>-1.0%</span></div>
+        <div class="fake-row"><span>영업2팀</span><span>9,870</span><span>10,240</span><span>11,050</span><span>31,160</span><span>+7.9%</span></div>
+        <div class="fake-row"><span>기획팀</span><span>4,120</span><span>4,050</span><span>4,200</span><span>12,370</span><span>+3.7%</span></div>
+        <div class="fake-row"><span>운영팀</span><span>7,330</span><span>7,410</span><span>7,280</span><span>22,020</span><span>-1.8%</span></div>
+        <div class="fake-row"><span>고객지원</span><span>3,540</span><span>3,610</span><span>3,590</span><span>10,740</span><span>-0.6%</span></div>
+        <div class="fake-row total"><span>합계</span><span>37,260</span><span>38,420</span><span>39,100</span><span>114,780</span><span>+1.8%</span></div>
+      </div>
+    </div>
+
+    <section id="start" class="dialog-layer">
+      <div class="dialog">
+        <h1>매크로를 실행할까요?</h1>
+        <p>
+          이 통합 문서에는 타자 전투 매크로가 포함되어 있습니다. 문장을 정확히 입력해 대상을 격파하세요.
+          매 판 다른 오리지널 소설이 선택되고, 6단계가 그 이야기의 장이 됩니다.
+          들킬 것 같으면 일시 중지 또는 Esc.
+        </p>
+        <p class="fine">문장은 저작권 없는 오리지널 미니소설 50편입니다. 매 판 다른 작품이 선택됩니다.</p>
+        <div class="dialog-actions">
+          <button type="button" id="btn-start" class="dlg-main">실행</button>
+          <a class="dlg-ghost" href="../../index.html">취소</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="stage-pop" class="dialog-layer hidden">
+      <div class="dialog slim">
+        <p class="kicker" id="pop-kicker">다음 시트</p>
+        <h2 id="pop-title">실적2</h2>
+        <p id="pop-sub"></p>
+        <button type="button" id="btn-next" class="dlg-main">계속</button>
+      </div>
+    </section>
+
+    <section id="result" class="dialog-layer hidden">
+      <div class="dialog">
+        <h2 id="result-title">저장 완료</h2>
+        <p id="result-sub"></p>
+        <ul id="result-stats" class="result-stats"></ul>
+        <div class="dialog-actions">
+          <button type="button" id="btn-retry" class="dlg-main">다시 실행</button>
+          <a class="dlg-ghost" href="../../index.html">닫기</a>
+        </div>
+      </div>
+    </section>
+
+    <script src="./novels.js"></script>
+    <script src="./game.js"></script>
+  </body>
+</html>

@@ -40,7 +40,7 @@
           <div class="slide-bar"><div id="slide-fill"></div></div>
           <small id="slide-hint">준비됨</small>
         </div>
-        <p class="keys">방향키 / WASD 이동 · 스페이스 점프 · Shift 슬라이딩 (2.5초 쿨타임)</p>
+        <p class="keys" id="hud-keys">방향키 / WASD 이동 · 스페이스 점프 · Shift 슬라이딩</p>
       </section>
 
       <section id="start" class="overlay">
@@ -51,8 +51,23 @@
           <ul class="controls">
             <li><kbd>W A S D</kbd> 또는 <kbd>↑ ← ↓ →</kbd> 이동 · 달리기</li>
             <li><kbd>Space</kbd> 점프</li>
-            <li><kbd>Shift</kbd> 슬라이딩 · 2.5초 쿨타임</li>
+            <li><kbd>Shift</kbd> 슬라이딩 · <span id="slide-cd-label">1.75초</span> 쿨타임</li>
           </ul>
+          <p class="diff-label">난이도 · 슬라이딩 쿨타임</p>
+          <div class="diff-row" role="radiogroup" aria-label="난이도">
+            <button type="button" class="diff-btn" data-diff="easy" aria-pressed="false">
+              이지
+              <small>1초</small>
+            </button>
+            <button type="button" class="diff-btn selected" data-diff="normal" aria-pressed="true">
+              노말
+              <small>1.75초</small>
+            </button>
+            <button type="button" class="diff-btn" data-diff="hard" aria-pressed="false">
+              하드
+              <small>2.5초</small>
+            </button>
+          </div>
           <button id="btn-start" type="button">레이스 시작</button>
         </div>
       </section>
