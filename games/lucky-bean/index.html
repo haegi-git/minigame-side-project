@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>럭키콩 - 심심타임</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🫘</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./style.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="game-root">
+      <canvas id="view"></canvas>
+
+      <a class="back" href="../../index.html">← 게임 선택</a>
+      <button id="mute" class="mute" type="button" aria-label="소리 끄기">🔊</button>
+
+      <section id="hud" class="hud hidden">
+        <div class="hud-card">
+          <p class="money">콩알 <b id="money">1,500</b></p>
+          <p class="goal">목표 <b>10,000</b></p>
+        </div>
+        <div class="progress-wrap">
+          <div id="progress" class="progress"></div>
+        </div>
+        <p id="prompt" class="prompt hidden">E · 대화하기</p>
+      </section>
+
+      <p class="keys" id="keys-hint">WASD 이동 · E 말걸기</p>
+
+      <section id="start" class="overlay">
+        <div class="panel">
+          <p class="kicker">심심타임</p>
+          <h1>럭키콩</h1>
+          <p class="lead">
+            광장을 돌아다니며 가위바위보, 돌림판, 짝맞추기 같은 운빨 게임으로 콩알을 불려 보세요.
+            <b>1,500</b>으로 시작해 <b>10,000</b>이면 승리, 콩알이 100 미만이면 파산이에요.
+          </p>
+          <ul class="controls">
+            <li><kbd>W A S D</kbd> 광장 이동</li>
+            <li><kbd>E</kbd> NPC에게 말걸기</li>
+            <li>번 돈으로 모자 · 악세사리 구매</li>
+          </ul>
+          <button id="btn-start" type="button">광장으로</button>
+        </div>
+      </section>
+
+      <section id="play" class="overlay hidden">
+        <div class="panel play-panel">
+          <h2 id="play-title">게임</h2>
+          <p id="play-lead" class="lead"></p>
+          <p class="bet-label" id="bet-label">얼마 걸까요?</p>
+          <div id="bet-row" class="bet-row"></div>
+
+          <div id="stage-rps" class="stage hidden">
+            <div class="choice-row">
+              <button type="button" class="choice" data-rps="0">✊<span>바위</span></button>
+              <button type="button" class="choice" data-rps="1">✋<span>보</span></button>
+              <button type="button" class="choice" data-rps="2">✌️<span>가위</span></button>
+            </div>
+          </div>
+
+          <div id="stage-wheel" class="stage hidden">
+            <p class="hint">바늘이 멈추는 칸이 배당이에요. 따라갈 수 있는 트릭은 없어요.</p>
+            <div class="wheel-box">
+              <div class="wheel-pin" aria-hidden="true"></div>
+              <div class="wheel" id="wheel"></div>
+              <div class="wheel-hub" aria-hidden="true"></div>
+            </div>
+            <button type="button" id="btn-spin">돌리기</button>
+          </div>
+
+          <div id="stage-cards" class="stage hidden">
+            <p class="hint">같은 그림 짝을 모두 맞추면 2배! 14번 안에 뒤집으세요.</p>
+            <p class="hint" id="card-flips">뒤집은 횟수 0 / 14</p>
+            <div class="card-grid" id="card-grid"></div>
+          </div>
+
+          <div id="stage-odd" class="stage hidden">
+            <div class="dice" id="dice">?</div>
+            <div class="choice-row">
+              <button type="button" class="choice slim" data-odd="1">홀</button>
+              <button type="button" class="choice slim" data-odd="0">짝</button>
+            </div>
+          </div>
+
+          <div id="stage-ladder" class="stage hidden">
+            <p class="hint">위에서 길을 고르면 사다리를 타고 내려가요. 당첨이면 3배!</p>
+            <div class="ladder-wrap">
+              <canvas id="ladder-canvas" width="360" height="280"></canvas>
+              <div class="ladder-picks" id="ladder-picks">
+                <button type="button" data-lad="0">1</button>
+                <button type="button" data-lad="1">2</button>
+                <button type="button" data-lad="2">3</button>
+              </div>
+            </div>
+          </div>
+
+          <p id="play-result" class="play-result hidden"></p>
+          <div id="play-actions" class="actions hidden">
+            <button id="btn-again" type="button">한 판 더</button>
+            <button id="btn-leave" class="ghost" type="button">광장으로</button>
+          </div>
+          <button id="btn-cancel" class="ghost leave-early" type="button">광장으로</button>
+        </div>
+      </section>
+
+      <section id="shop" class="overlay hidden">
+        <div class="panel play-panel">
+          <h2>꾸미기 상점</h2>
+          <p class="lead">번 콩알로 모자와 악세사리를 사서 콩을 꾸밀 수 있어요. 한 부위에는 하나만 착용돼요.</p>
+          <div id="shop-grid" class="shop-grid"></div>
+          <div class="actions">
+            <button id="btn-shop-close" class="ghost" type="button">광장으로</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="result" class="overlay hidden">
+        <div class="panel">
+          <h2 id="result-title">골인!</h2>
+          <p id="result-sub" class="lead"></p>
+          <div class="actions">
+            <button id="btn-retry" type="button">다시 하기</button>
+            <a class="ghost" href="../../index.html">로비로</a>
+          </div>
+        </div>
+      </section>
+    </div>
+    <script type="module" src="./game.js"></script>
+  </body>
+</html>

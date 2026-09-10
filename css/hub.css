@@ -303,6 +303,74 @@ a.card:hover {
   background: linear-gradient(135deg, #c8f4e0, #cde8ff);
 }
 
+.lucky-preview {
+  background: linear-gradient(180deg, #9ad8ff 0%, #f4d7e8 100%);
+}
+
+.lucky-stall {
+  position: absolute;
+  bottom: 28px;
+  width: 46px;
+  height: 34px;
+  border: 3px solid #2b2140;
+  border-radius: 8px 8px 4px 4px;
+}
+
+.lucky-stall::after {
+  content: "";
+  position: absolute;
+  left: -6px;
+  right: -6px;
+  top: -10px;
+  height: 12px;
+  border: 3px solid #2b2140;
+  border-radius: 8px;
+  background: #fffdf8;
+}
+
+.lucky-stall.pink {
+  left: 18%;
+  background: var(--pink);
+}
+
+.lucky-stall.mint {
+  right: 18%;
+  background: var(--mint);
+}
+
+.lucky-coin {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--lemon);
+  border: 3px solid #2b2140;
+  animation: bob 2.2s ease-in-out infinite;
+}
+
+.lucky-coin.c-a {
+  left: 48%;
+  top: 28px;
+}
+
+.lucky-coin.c-b {
+  left: 58%;
+  top: 48px;
+  animation-delay: 0.4s;
+}
+
+.mini-bean.lucky-b1 {
+  left: 42%;
+  bottom: 22px;
+}
+
+.mini-bean.lucky-b2 {
+  left: auto;
+  right: 28%;
+  bottom: 22px;
+  animation-delay: 0.25s;
+}
+
 .cell-preview {
   background: #eef6f1;
 }
