@@ -31,7 +31,7 @@
       <section id="hud" class="hud hidden">
         <div class="hud-card">
           <p class="money">콩알 <b id="money">1,500</b></p>
-          <p class="goal">목표 <b>10,000</b></p>
+          <p class="goal">목표 <b>500,000</b></p>
         </div>
         <div class="progress-wrap">
           <div id="progress" class="progress"></div>
@@ -47,7 +47,7 @@
           <h1>럭키콩</h1>
           <p class="lead">
             광장을 돌아다니며 가위바위보, 돌림판, 짝맞추기 같은 운빨 게임으로 콩알을 불려 보세요.
-            <b>1,500</b>으로 시작해 <b>10,000</b>이면 승리, 콩알이 100 미만이면 파산이에요.
+            <b>1,500</b>으로 시작해 <b>500,000</b>이면 승리, 콩알이 100 미만이면 파산이에요.
           </p>
           <ul class="controls">
             <li class="kb-only"><kbd>W A S D</kbd> 광장 이동</li>
@@ -64,7 +64,20 @@
           <h2 id="play-title">게임</h2>
           <p id="play-lead" class="lead"></p>
           <p class="bet-label" id="bet-label">얼마 걸까요?</p>
-          <div id="bet-row" class="bet-row"></div>
+          <div id="bet-row" class="bet-row">
+            <div class="bet-stepper">
+              <div class="bet-col minus" id="bet-minus"></div>
+              <div class="bet-amount">
+                <b id="bet-amount">0</b>
+                <span>콩알</span>
+              </div>
+              <div class="bet-col plus" id="bet-plus"></div>
+            </div>
+            <div class="bet-go">
+              <button type="button" id="btn-bet" disabled>걸기</button>
+              <button type="button" id="btn-allin">올인</button>
+            </div>
+          </div>
 
           <div id="stage-rps" class="stage hidden">
             <div class="choice-row">

@@ -1,7 +1,8 @@
 import * as THREE from "three";
 
 const START_MONEY = 1500;
-const GOAL = 10000;
+const GOAL = 500000;
+const BET_STEPS = [50, 100, 1000, 10000];
 const MIN_BET = 100;
 const LOOK_KEY = "lucky-bean-look";
 const RPS_NAME = ["바위", "보", "가위"];
@@ -163,6 +164,7 @@ let phase = "start";
 let nearStall = null;
 let currentGame = null;
 let currentBet = 0;
+let pendingBet = 0;
 let busy = false;
 let roundOver = false;
 let cardState = null;
@@ -492,6 +494,50 @@ function hideStages() {
   }
 }
 
+function clampBet(n) {
+  return Math.max(0, Math.min(money, n));
+}
+
+function renderBetUI() {
+  document.getElementById("bet-amount").textContent = format(pendingBet);
+  document.getElementById("btn-bet").disabled = pendingBet < MIN_BET || pendingBet > money;
+  document.getElementById("btn-allin").disabled = money < MIN_BET;
+  document.querySelectorAll("#bet-minus button").forEach((btn) => {
+    btn.disabled = pendingBet <= 0;
+  });
+  document.querySelectorAll("#bet-plus button").forEach((btn) => {
+    btn.disabled = pendingBet >= money;
+  });
+}
+
+function ensureBetButtons() {
+  const minus = document.getElementById("bet-minus");
+  const plus = document.getElementById("bet-plus");
+  if (minus.childElementCount) return;
+  for (const step of BET_STEPS) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = `-${format(step)}`;
+    btn.addEventListener("click", () => {
+      pendingBet = clampBet(pendingBet - step);
+      renderBetUI();
+      sfx.click();
+    });
+    minus.appendChild(btn);
+  }
+  for (const step of BET_STEPS) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = `+${format(step)}`;
+    btn.addEventListener("click", () => {
+      pendingBet = clampBet(pendingBet + step);
+      renderBetUI();
+      sfx.click();
+    });
+    plus.appendChild(btn);
+  }
+}
+
 function showBetUI() {
   busy = false;
   hideStages();
@@ -502,24 +548,9 @@ function showBetUI() {
   const cancel = document.getElementById("btn-cancel");
   cancel.classList.remove("hidden");
   cancel.textContent = "광장으로";
-  const row = document.getElementById("bet-row");
-  const bets = [100, 300, 500, 1000];
-  row.innerHTML = "";
-  for (const b of bets) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.textContent = format(b);
-    btn.disabled = money < b;
-    btn.addEventListener("click", () => startRound(b));
-    row.appendChild(btn);
-  }
-  if (money >= MIN_BET) {
-    const all = document.createElement("button");
-    all.type = "button";
-    all.textContent = `올인 ${format(money)}`;
-    all.addEventListener("click", () => startRound(money));
-    row.appendChild(all);
-  }
+  pendingBet = 0;
+  ensureBetButtons();
+  renderBetUI();
 }
 
 function openStall(stall) {
@@ -1053,6 +1084,8 @@ document.getElementById("btn-again").addEventListener("click", () => {
   if (maybeEnd()) return;
   showBetUI();
 });
+document.getElementById("btn-bet").addEventListener("click", () => startRound(pendingBet));
+document.getElementById("btn-allin").addEventListener("click", () => startRound(money));
 document.getElementById("btn-retry").addEventListener("click", () => location.reload());
 muteBtn.addEventListener("click", () => {
   sfx.enabled = !sfx.enabled;
