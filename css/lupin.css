@@ -1,0 +1,156 @@
+.lupin-setup {
+  position: relative;
+  z-index: 1;
+  width: min(560px, calc(100% - 32px));
+  margin: 0 auto 28px;
+  background: #fffdf8;
+  border: 3px solid #2b2140;
+  border-radius: 22px;
+  padding: 16px 18px 14px;
+  box-shadow: 6px 6px 0 #2b2140;
+}
+
+.lupin-setup h2 {
+  font-family: "Jua", sans-serif;
+  font-size: 22px;
+  margin-bottom: 4px;
+}
+
+.lupin-setup .blurb {
+  color: #6d5a7a;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+.lupin-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.lupin-kinds {
+  display: flex;
+  gap: 6px;
+}
+
+.lupin-kinds button,
+#lupin-save,
+#lupin-clear {
+  font-family: "Jua", sans-serif;
+  border: 3px solid #2b2140;
+  border-radius: 12px;
+  padding: 8px 12px;
+  background: #fff;
+  cursor: pointer;
+  color: #2b2140;
+}
+
+.lupin-kinds button.on {
+  background: #ffe066;
+}
+
+.lupin-pay-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 160px;
+  background: #fff;
+  border: 3px solid #2b2140;
+  border-radius: 12px;
+  padding: 0 10px;
+}
+
+.lupin-pay-wrap input {
+  flex: 1;
+  border: 0;
+  outline: none;
+  font-family: "Jua", sans-serif;
+  font-size: 18px;
+  width: 100%;
+  padding: 8px 0;
+  background: transparent;
+  color: #2b2140;
+}
+
+#lupin-save {
+  background: #ff8fb8;
+  box-shadow: 3px 3px 0 #2b2140;
+}
+
+#lupin-clear {
+  background: #efe6ff;
+}
+
+.lupin-note {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #6d5a7a;
+}
+
+.lupin-widget {
+  display: none;
+  position: fixed;
+  z-index: 40;
+  background: #fffdf8;
+  border: 3px solid #2b2140;
+  border-radius: 16px;
+  padding: 8px 12px 7px;
+  box-shadow: 4px 4px 0 #2b2140;
+  text-align: right;
+  pointer-events: none;
+  min-width: 128px;
+}
+
+.lupin-widget.on {
+  display: block;
+}
+
+.lupin-widget.hub {
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+}
+
+.lupin-widget.game {
+  right: max(12px, env(safe-area-inset-right));
+  top: 42%;
+  transform: translateY(-50%);
+}
+
+.lupin-kicker,
+.lupin-sub {
+  font-family: "Gowun Dodum", sans-serif;
+  font-size: 11px;
+  color: #6d5a7a;
+}
+
+.lupin-amt {
+  font-family: "Jua", sans-serif;
+  font-size: 22px;
+  color: #2b2140;
+  line-height: 1.15;
+}
+
+@media (hover: none), (pointer: coarse) {
+  .lupin-widget.game {
+    top: auto;
+    bottom: max(148px, env(safe-area-inset-bottom) + 132px);
+    right: max(12px, env(safe-area-inset-right));
+    transform: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .lupin-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .lupin-widget.hub {
+    left: 12px;
+    right: 12px;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    text-align: center;
+  }
+}

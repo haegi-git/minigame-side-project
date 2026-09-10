@@ -12,6 +12,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./css/hub.css" />
+    <link rel="stylesheet" href="./css/lupin.css" />
   </head>
   <body>
     <div class="sky">
@@ -29,6 +30,24 @@
       <h1>심심타임</h1>
       <p class="tagline">잠깐 머리 식히고 싶을 때, 귀여운 미니게임 한 판</p>
     </header>
+
+    <section class="lupin-setup" aria-label="월급루팡">
+      <h2>월급루팡</h2>
+      <p class="blurb">연봉이나 월급을 적어 두면, 게임을 하러 가도 구석에서 루팡 금액이 실시간으로 올라가요.</p>
+      <div class="lupin-form">
+        <div class="lupin-kinds">
+          <button type="button" data-lupin-kind="month" class="on">월급</button>
+          <button type="button" data-lupin-kind="year">연봉</button>
+        </div>
+        <label class="lupin-pay-wrap">
+          <input id="lupin-pay" type="number" min="0" step="10000" inputmode="numeric" placeholder="3200000" />
+          <span>원</span>
+        </label>
+        <button type="button" id="lupin-save">저장</button>
+        <button type="button" id="lupin-clear">지우기</button>
+      </div>
+      <p class="lupin-note">주 5일 · 하루 8시간, 월 160시간 기준으로 계산해요. 이 창을 연 동안만 올라갑니다.</p>
+    </section>
 
     <main class="grid">
       <a class="card playable" href="./games/bean-run/index.html">
@@ -109,5 +128,6 @@
     <footer>
       <p>게임은 하나씩 추가될 예정이에요. 빈런, 셀격파, 럭키콩을 플레이할 수 있어요.</p>
     </footer>
+    <script src="./js/lupin.js" defer></script>
   </body>
 </html>
