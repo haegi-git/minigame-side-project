@@ -620,14 +620,17 @@ button,
     display: none !important;
   }
   .hud {
-    top: max(12px, env(safe-area-inset-top));
-    width: min(420px, calc(100% - 24px));
+    top: max(56px, calc(env(safe-area-inset-top) + 44px));
+    width: min(420px, calc(100% - 20px));
   }
   .panel {
     padding: 20px 16px 18px;
   }
   .panel h1 {
     font-size: 42px;
+  }
+  .lead {
+    word-break: keep-all;
   }
   .wheel-box,
   .wheel {
@@ -638,5 +641,29 @@ button,
     min-width: 72px;
     font-size: 24px;
     padding: 10px 8px 6px;
+  }
+  body:has(#play:not(.hidden)) .hud,
+  body:has(#shop:not(.hidden)) .hud,
+  body:has(#result:not(.hidden)) .hud,
+  body:has(#play:not(.hidden)) .touch-ui,
+  body:has(#shop:not(.hidden)) .touch-ui,
+  body:has(#result:not(.hidden)) .touch-ui {
+    display: none !important;
+  }
+}
+
+@media (hover: none) and (orientation: landscape), (pointer: coarse) and (orientation: landscape) {
+  .hud {
+    top: max(12px, env(safe-area-inset-top));
+    width: min(420px, calc(100% - 176px));
+  }
+  .stick {
+    width: 108px;
+    height: 108px;
+  }
+  .touch-btn.talk {
+    min-width: 76px;
+    height: 76px;
+    font-size: 15px;
   }
 }

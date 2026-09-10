@@ -521,44 +521,49 @@ a {
 
 @media (max-width: 760px) {
   .cover {
-    top: 102px;
+    top: 32px;
   }
   .app {
-    grid-template-rows: 32px 0 auto auto 1fr 52px 22px 28px;
+    grid-template-rows: 32px auto auto 1fr 48px 22px 28px;
   }
   .menubar {
     display: none;
   }
+  .stats-strip {
+    display: none;
+  }
   .ribbon {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 8px;
-    padding: 8px 10px;
+    padding: 6px 10px;
+    min-height: 44px;
+    overflow-x: auto;
   }
   .rib-btn {
     padding: 8px 12px;
     font-size: 14px;
+    flex: 0 0 auto;
   }
   .prompt {
     white-space: normal;
     overflow: auto;
     text-overflow: unset;
-    min-height: 44px;
+    min-height: 0;
+    max-height: 72px;
     font-size: 15px;
     line-height: 1.45;
   }
   .formula {
     align-items: flex-start;
   }
-  .stats-strip {
-    flex-wrap: wrap;
-    gap: 8px;
-  }
   .sheet-main {
     min-width: 480px;
   }
   .type-dock {
     grid-template-columns: 44px 1fr 56px;
-    min-height: 52px;
+    height: 48px;
+    min-height: 48px;
+    max-height: 48px;
   }
   .enter-btn {
     font-size: 22px;
@@ -568,5 +573,10 @@ a {
   }
   .statusbar {
     padding-bottom: env(safe-area-inset-bottom);
+  }
+  .filename {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }

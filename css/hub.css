@@ -503,6 +503,9 @@ footer {
   h1 {
     font-size: clamp(44px, 14vw, 72px);
   }
+  .sky .bean {
+    display: none;
+  }
   .grid {
     width: min(1080px, calc(100% - 20px));
     gap: 16px;

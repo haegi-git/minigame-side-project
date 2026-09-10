@@ -6,6 +6,7 @@ const MIN_BET = 100;
 const LOOK_KEY = "lucky-bean-look";
 const RPS_NAME = ["바위", "보", "가위"];
 const CARD_FACES = ["🌸", "🍋", "⭐", "💎"];
+const CARD_FLIPS = 12;
 const WHEEL = [
   { label: "꽝", mult: 0, color: "#ff8fb8" },
   { label: "꽝", mult: 0, color: "#d4b3ff" },
@@ -55,7 +56,7 @@ const STALLS = [
     color: 0xffe066,
     x: -10,
     z: -4,
-    lead: "같은 그림을 14번 안에 모두 맞추면 2배예요.",
+    lead: "같은 그림을 12번 안에 모두 맞추면 2배예요.",
   },
   {
     id: "odd",
@@ -677,7 +678,7 @@ function setupCards() {
     b.addEventListener("click", () => flipCard(i, b));
     grid.appendChild(b);
   });
-  document.getElementById("card-flips").textContent = "뒤집은 횟수 0 / 14";
+  document.getElementById("card-flips").textContent = `뒤집은 횟수 0 / ${CARD_FLIPS}`;
 }
 
 async function flipCard(i, btn) {
@@ -686,8 +687,8 @@ async function flipCard(i, btn) {
   btn.classList.add("on");
   cardState.open.push(i);
   cardState.flips += 1;
-  document.getElementById("card-flips").textContent = `뒤집은 횟수 ${cardState.flips} / 14`;
-  if (cardState.flips > 14) {
+  document.getElementById("card-flips").textContent = `뒤집은 횟수 ${cardState.flips} / ${CARD_FLIPS}`;
+  if (cardState.flips > CARD_FLIPS) {
     cardState.lock = true;
     payout(0, "뒤집기를 너무 많이 했어요...", false);
     return;

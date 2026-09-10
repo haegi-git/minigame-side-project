@@ -417,14 +417,30 @@ button,
     display: none !important;
   }
   .hud {
-    top: max(12px, env(safe-area-inset-top));
-    width: min(520px, calc(100% - 24px));
+    top: max(56px, calc(env(safe-area-inset-top) + 44px));
+    width: min(520px, calc(100% - 20px));
   }
   .panel {
     padding: 20px 16px 18px;
   }
   .panel h1 {
     font-size: 44px;
+  }
+}
+
+@media (hover: none) and (orientation: landscape), (pointer: coarse) and (orientation: landscape) {
+  .hud {
+    top: max(12px, env(safe-area-inset-top));
+    width: min(520px, calc(100% - 176px));
+  }
+  .stick {
+    width: 108px;
+    height: 108px;
+  }
+  .touch-btn {
+    min-width: 76px;
+    height: 58px;
+    font-size: 15px;
   }
 }
 
