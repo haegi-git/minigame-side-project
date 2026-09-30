@@ -3,11 +3,26 @@ import * as THREE from "three";
 const BEST_KEY = "kongtrider-best";
 const ITEM_INFO = {
   boost: { name: "부스터", icon: "🔥" },
+  triple: { name: "삼단부스터", icon: "🚀" },
   banana: { name: "바나나", icon: "🍌" },
+  ink: { name: "먹물", icon: "🖤" },
   shield: { name: "방패", icon: "🛡️" },
   missile: { name: "콩탄", icon: "🫘" },
+  cannon: { name: "콩대포", icon: "🎯" },
+  magnet: { name: "자석", icon: "🧲" },
+  lightning: { name: "번개", icon: "⚡" },
 };
-const BAG = ["boost", "boost", "boost", "banana", "banana", "banana", "shield", "shield", "missile", "missile"];
+const BAG = [
+  "boost", "boost", "boost",
+  "triple", "triple",
+  "banana", "banana",
+  "ink", "ink",
+  "shield", "shield",
+  "missile", "missile",
+  "cannon",
+  "magnet",
+  "lightning",
+];
 const TIER_COLOR = [0xfffdf8, 0xff8fb8, 0xffe066, 0x9bf6ff];
 const START_GAP = 38;
 
@@ -42,6 +57,7 @@ const muteBtn = document.getElementById("mute");
 const minimapEl = document.getElementById("minimap");
 const toastEl = document.getElementById("toast");
 const flashEl = document.getElementById("flash");
+const inkEl = document.getElementById("ink");
 const mapCtx = minimapEl.getContext("2d");
 
 const keys = new Set();
@@ -146,6 +162,7 @@ let L = 1;
 let raceLen = 1;
 let startS = 0;
 let launchS = -1;
+const launches = [];
 let CRUISE = 22;
 let maxAbsCurv = 0;
 
@@ -154,12 +171,17 @@ const karts = [];
 const boxes = [];
 const bananas = [];
 const missiles = [];
+const slicks = [];
+const hazards = [];
+let courseMarks = [];
+let shortcut = null;
 const flags = [];
 const clouds = [];
 const archLights = [];
 let player = null;
 const fr = makeScratch();
 const lookFr = makeScratch();
+const nearFr = makeScratch();
 
 function makeScratch() {
   return {
@@ -264,70 +286,104 @@ function storageSet(v) {
   }
 }
 
+function smooth01(t) {
+  const x = Math.max(0, Math.min(1, t));
+  return x * x * (3 - 2 * x);
+}
+
+function courseCommands() {
+  return [
+    ["f", 78, 0, "start"],
+    ["t", -26, 18, "chicane"],
+    ["t", 54, 16, "chicane"],
+    ["t", -28, 18, "chicane"],
+    ["f", 58, 0, "toHair"],
+    ["t", 170, 17, "hairL"],
+    ["f", 30, 0, "hairMid"],
+    ["t", -80, 24, "hairExit"],
+    ["f", 120, 0, "climb"],
+    ["t", 90, 18, "kink"],
+    ["f", 46, 0, "preSpur"],
+    ["t", -170, 20, "hairpin"],
+    ["f", 18, 0, "pinStraight"],
+    ["t", 170, 20, "hairpinBack"],
+    ["f", 22, 0, "postSpur"],
+    ["f", 100, 0, "side"],
+    ["t", 22, 24, "esses"],
+    ["t", -44, 22, "esses"],
+    ["t", 22, 24, "esses"],
+    ["t", 100, 58, "bank"],
+    ["f", 72, 0, "tunnel"],
+    ["t", 30, 20, "wiggle"],
+    ["t", -60, 18, "wiggle"],
+    ["t", 30, 20, "wiggle"],
+    ["f", 93.8, 0, "narrow"],
+    ["t", 80, 18, "tight"],
+    ["f", 93.25, 0, "bridge"],
+  ];
+}
+
+function heightAt(s) {
+  const m = courseMarks.find((mk) => s >= mk.s0 && s < mk.s1) || courseMarks[courseMarks.length - 1];
+  const u = m.s1 > m.s0 ? (s - m.s0) / (m.s1 - m.s0) : 0;
+  if (m.tag === "climb") return 0.4 + 7.8 * smooth01(u);
+  if (m.tag === "kink") return 8.2 + (2.2 - 8.2) * smooth01(u);
+  if (m.tag === "preSpur") return 2.2 + (1.4 - 2.2) * u;
+  if (m.tag === "hairpin" || m.tag === "pinStraight" || m.tag === "hairpinBack") return 1.35;
+  if (m.tag === "postSpur") return 1.35 + (0.4 - 1.35) * u;
+  if (m.tag === "bank") return 0.5 + 0.85 * Math.sin(Math.min(1, u) * Math.PI);
+  if (m.tag === "bridge") {
+    if (u < 0.32) return 0.4 + 6.8 * smooth01(u / 0.32);
+    if (u < 0.58) return 7.2;
+    return 7.2 + (0.4 - 7.2) * smooth01((u - 0.58) / 0.42);
+  }
+  return 0.4;
+}
+
 function coursePoints() {
   let x = 0;
   let z = 0;
   let h = 0;
-  const pts = [{ x, z }];
-  const cmds = [
-    ["f", 260],
-    ["t", 180, 27],
-    ["f", 80],
-    ["t", -40, 60],
-    ["f", 70],
-    ["t", 50, 46],
-    ["f", 50],
-    ["t", -45, 55],
-    ["f", 80],
-    ["t", 120, 90],
-    ["f", 30],
-    ["t", 75, 100],
-  ];
-  for (const [op, a, b] of cmds) {
+  let len = 0;
+  const pts = [{ x, z, s: 0 }];
+  courseMarks = [];
+  for (const [op, a, b, tag] of courseCommands()) {
+    const s0 = len;
     if (op === "f") {
-      const steps = Math.max(2, Math.round(a / 4));
+      const steps = Math.max(2, Math.round(Math.abs(a) / 3));
+      const step = a / steps;
       for (let i = 0; i < steps; i++) {
-        x += Math.cos(h) * (a / steps);
-        z += Math.sin(h) * (a / steps);
-        pts.push({ x, z });
+        x += Math.cos(h) * step;
+        z += Math.sin(h) * step;
+        len += Math.abs(step);
+        pts.push({ x, z, s: len });
       }
     } else {
-      const steps = Math.max(2, Math.round(Math.abs(a) / 4));
+      const steps = Math.max(8, Math.round(Math.abs(a) / 2));
       const dH = ((a * Math.PI) / 180) / steps;
       const stepLen = Math.abs(b * dH);
       for (let i = 0; i < steps; i++) {
+        const mid = h + dH / 2;
         h += dH;
-        x += Math.cos(h - dH / 2) * stepLen;
-        z += Math.sin(h - dH / 2) * stepLen;
-        pts.push({ x, z });
+        x += Math.cos(mid) * stepLen;
+        z += Math.sin(mid) * stepLen;
+        len += stepLen;
+        pts.push({ x, z, s: len });
       }
     }
+    courseMarks.push({ tag, s0, s1: len });
   }
-  const handle = 100;
-  const end = pts[pts.length - 1];
-  const fwdX = Math.cos(h);
-  const fwdZ = Math.sin(h);
-  const dist = Math.hypot(end.x, end.z);
-  const p0 = end;
-  const p1 = { x: end.x + fwdX * handle, z: end.z + fwdZ * handle };
-  const p2 = { x: -handle, z: 0 };
-  const p3 = { x: 0, z: 0 };
-  const nBez = Math.max(8, Math.round(dist / 4));
-  for (let i = 1; i <= nBez; i++) {
-    const t = i / nBez;
-    const u = 1 - t;
-    pts.push({
-      x: u ** 3 * p0.x + 3 * u * u * t * p1.x + 3 * u * t * t * p2.x + t ** 3 * p3.x,
-      z: u ** 3 * p0.z + 3 * u * u * t * p1.z + 3 * u * t * t * p2.z + t ** 3 * p3.z,
-    });
+  if (pts.length > 2 && Math.hypot(pts[pts.length - 1].x, pts[pts.length - 1].z) < 0.35) pts.pop();
+  return pts.map((p) => new THREE.Vector3(p.x, heightAt(p.s), p.z));
+}
+
+function markAt(s) {
+  let x = s % L;
+  if (x < 0) x += L;
+  for (const m of courseMarks) {
+    if (x >= m.s0 && x < m.s1) return m;
   }
-  if (Math.hypot(pts[pts.length - 1].x, pts[pts.length - 1].z) < 0.05) pts.pop();
-  return pts.map((p) => {
-    const wide = Math.exp(-((p.x + 40) ** 2) / (2 * 70 * 70)) * Math.exp(-(p.z * p.z) / (2 * 80 * 80));
-    const t = (p.x - 155) / 52;
-    const hill = Math.abs(p.z) < 22 ? 10 * Math.exp(-t * t) : 0;
-    return new THREE.Vector3(p.x, Math.max(0.25, hill, 0.25 + wide * 2.2), p.z);
-  });
+  return courseMarks[courseMarks.length - 1];
 }
 
 function buildTrack() {
@@ -401,30 +457,49 @@ function buildTrack() {
       rawCurv[(i - 1 + n) % n] * 0.2 + rawCurv[i] * 0.6 + rawCurv[(i + 1) % n] * 0.2;
     frames[i].curvature = c;
     maxAbsCurv = Math.max(maxAbsCurv, Math.abs(c));
-    const sharp = Math.min(1, Math.abs(c) / 0.04);
-    frames[i].half = 8.15 - sharp * 1.55;
-    const bank = THREE.MathUtils.clamp(-c * 5.5, -0.2, 0.2);
+    const tag = markAt(frames[i].s).tag;
+    const sharp = Math.min(1, Math.abs(c) / 0.045);
+    const wide = {
+      start: 7.7,
+      chicane: 6.15,
+      hairL: 6.05,
+      hairMid: 6.3,
+      hairExit: 6.4,
+      hairpin: 5.9,
+      pinStraight: 5.7,
+      hairpinBack: 5.9,
+      narrow: 4.15,
+      wiggle: 6.5,
+      tunnel: 6.55,
+      bank: 8.35,
+      tight: 6.1,
+      bridge: 7.15,
+      climb: 7.4,
+    };
+    frames[i].half = wide[tag] ?? 7.45 - sharp * 0.35;
+    frames[i].tag = tag;
+    let bank = THREE.MathUtils.clamp(-c * 3.4, -0.14, 0.14);
+    if (tag === "bank") bank = -Math.sign(c || 1) * 0.5;
     frames[i].right.applyAxisAngle(frames[i].tangent, bank);
     frames[i].up.crossVectors(frames[i].tangent, frames[i].right).normalize();
   }
-  let bestI = -1;
-  let bestDrop = 0.1;
+  launches.length = 0;
   const look = 7;
   for (let i = 0; i < n; i++) {
     const ahead = frames[(i + look) % n];
     const drop = frames[i].tangent.y - ahead.tangent.y;
-    if (frames[i].tangent.y > 0.07 && ahead.tangent.y < 0.03 && drop > bestDrop) {
-      bestDrop = drop;
-      bestI = i;
+    if (frames[i].tangent.y > 0.07 && ahead.tangent.y < 0.03 && drop > 0.1) {
+      const prev = launches[launches.length - 1];
+      if (prev == null || Math.abs(frames[i].s - prev) > 40) {
+        frames[i].launch = true;
+        launches.push(frames[i].s);
+      }
     }
   }
-  if (bestI >= 0) {
-    frames[bestI].launch = true;
-    launchS = frames[bestI].s;
-  }
+  launchS = launches[0] ?? -1;
   startS = L - START_GAP;
   raceLen = L + START_GAP;
-  CRUISE = raceLen / 56.5;
+  CRUISE = raceLen / 63;
 }
 
 function ribbonGeometry(widthPad, yDrop) {
@@ -860,8 +935,8 @@ function buildScenery() {
   checker.receiveShadow = shadowsOn;
   scene.add(checker);
 
-  if (launchS >= 0) {
-    sampleInto(launchS, fr);
+  for (const ls of launches) {
+    sampleInto(ls, fr);
     const ramp = new THREE.Mesh(
       new THREE.BoxGeometry(fr.half * 1.7, 0.16, 3.4),
       new THREE.MeshStandardMaterial({ color: 0xffe066, roughness: 0.45, emissive: 0xffb703, emissiveIntensity: 0.18 })
@@ -870,7 +945,7 @@ function buildScenery() {
     _basis.makeBasis(fr.right, fr.up, fr.tangent);
     ramp.quaternion.setFromRotationMatrix(_basis);
     scene.add(ramp);
-    placeSign(Math.max(0, launchS - 22), "점프!", 1);
+    placeSign(Math.max(0, ls - 18), "점프!", 1);
   }
   placeSign(22, "출발", -1);
 
@@ -893,6 +968,106 @@ function buildScenery() {
     clouds.push(bunch);
     scene.add(bunch);
   }
+}
+
+function buildCourseFeatures() {
+  const tunnel = courseMarks.find((m) => m.tag === "tunnel");
+  const bank = courseMarks.find((m) => m.tag === "bank");
+  const narrow = courseMarks.find((m) => m.tag === "narrow");
+  const chicane = courseMarks.find((m) => m.tag === "chicane");
+  const hair = courseMarks.find((m) => m.tag === "hairL");
+  if (tunnel) {
+    const ribs = [];
+    const step = liteScene ? 16 : 9;
+    for (let s = tunnel.s0 + 4; s < tunnel.s1 - 2; s += step) ribs.push(s);
+    const dark = new THREE.MeshLambertMaterial({ color: 0x3a3158 });
+    const beam = new THREE.MeshLambertMaterial({ color: 0x6d5a8a });
+    addInstances(new THREE.BoxGeometry(1, 1, 1), dark, ribs.length * 2, (i, mesh) => {
+      sampleInto(ribs[(i / 2) | 0], fr);
+      const side = i % 2 === 0 ? -1 : 1;
+      _dummy.position.copy(fr.pos).addScaledVector(fr.right, side * (fr.half + 0.15)).addScaledVector(fr.up, 1.7);
+      _basis.makeBasis(fr.right, fr.up, fr.tangent);
+      _dummy.quaternion.setFromRotationMatrix(_basis);
+      _dummy.scale.set(0.7, 3.5, 0.7);
+      _dummy.updateMatrix();
+      mesh.setMatrixAt(i, _dummy.matrix);
+    });
+    addInstances(new THREE.BoxGeometry(1, 1, 1), beam, ribs.length, (i, mesh) => {
+      sampleInto(ribs[i], fr);
+      _dummy.position.copy(fr.pos).addScaledVector(fr.up, 3.55);
+      _basis.makeBasis(fr.right, fr.up, fr.tangent);
+      _dummy.quaternion.setFromRotationMatrix(_basis);
+      _dummy.scale.set(fr.half * 2 + 1.5, 0.42, 0.85);
+      _dummy.updateMatrix();
+      mesh.setMatrixAt(i, _dummy.matrix);
+    });
+    placeSign(tunnel.s0 + 6, "터널", -1);
+  }
+  if (bank) {
+    shortcut = { enter: bank.s0 + 12, exit: bank.s1 - 10, side: -1 };
+    sampleInto(shortcut.enter, fr);
+    const a = fr.pos.clone().addScaledVector(fr.right, shortcut.side * (fr.half + 2.2));
+    sampleInto(shortcut.exit, fr);
+    const b = fr.pos.clone().addScaledVector(fr.right, shortcut.side * 2.2);
+    const dir = b.clone().sub(a);
+    const len = Math.max(1, dir.length());
+    dir.normalize();
+    const side = new THREE.Vector3().crossVectors(_yAxis, dir).normalize();
+    const hw = 3.1;
+    const yLift = 0.12;
+    const positions = new Float32Array([
+      a.x - side.x * hw, a.y + yLift, a.z - side.z * hw,
+      a.x + side.x * hw, a.y + yLift, a.z + side.z * hw,
+      b.x + side.x * hw, b.y + yLift, b.z + side.z * hw,
+      b.x - side.x * hw, b.y + yLift, b.z - side.z * hw,
+    ]);
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    geo.setIndex([0, 2, 1, 0, 3, 2]);
+    geo.computeVertexNormals();
+    const strip = new THREE.Mesh(
+      geo,
+      new THREE.MeshStandardMaterial({ color: 0x7ce7c4, roughness: 0.85, side: THREE.DoubleSide })
+    );
+    strip.receiveShadow = shadowsOn;
+    scene.add(strip);
+    shortcut.a = a;
+    shortcut.b = b;
+    shortcut.len = len;
+    shortcut.sideVec = side;
+    placeSign(bank.s0 + 4, "지름길", -1);
+    const oil = new THREE.Mesh(
+      new THREE.CircleGeometry(2.1, 14),
+      new THREE.MeshBasicMaterial({ color: 0x24182f, transparent: true, opacity: 0.82 })
+    );
+    oil.rotation.x = -Math.PI / 2;
+    oil.position.copy(a).lerp(b, 0.48);
+    oil.position.y += 0.16;
+    scene.add(oil);
+  }
+  if (narrow) {
+    placeSign(narrow.s0 + 8, "좁은 길", 1);
+    addHazard((narrow.s0 + narrow.s1) * 0.5, 0.2, "oil", 2.3);
+  }
+  if (chicane) {
+    addHazard(chicane.s0 + 8, 2.15, "bump", 1.25);
+    addHazard(chicane.s1 - 4, -2.05, "bump", 1.25);
+  }
+  if (hair) placeSign(hair.s0 + 4, "헤어핀", 1);
+}
+
+function addHazard(s, u, kind, r) {
+  sampleInto(s, fr);
+  const mesh = new THREE.Mesh(
+    kind === "oil" ? new THREE.CircleGeometry(r, 16) : new THREE.CylinderGeometry(r * 0.55, r * 0.7, 0.55, 7),
+    kind === "oil"
+      ? new THREE.MeshBasicMaterial({ color: 0x1a1228, transparent: true, opacity: 0.88 })
+      : new THREE.MeshStandardMaterial({ color: 0xffe066, roughness: 0.55, flatShading: true })
+  );
+  if (kind === "oil") mesh.rotation.x = -Math.PI / 2;
+  mesh.position.copy(fr.pos).addScaledVector(fr.right, u).addScaledVector(fr.up, kind === "oil" ? 0.08 : 0.28);
+  scene.add(mesh);
+  hazards.push({ s, u, kind, r, mesh });
 }
 
 function placeSign(dist, text, side) {
@@ -1136,9 +1311,9 @@ function makeKart(color, number, name, nameHex) {
 function buildKarts() {
   const specs = [
     { name: "나", me: true, color: 0xff4f93, hex: "#ff4f93", u: 1.15, skill: 1, cruise: 1, num: 1 },
-    { name: "콩이", color: 0x2fcea0, hex: "#1aa87a", u: -1.2, skill: 0.92, cruise: 0.975, num: 2 },
-    { name: "뭉치", color: 0xffc107, hex: "#e0a100", u: 3.2, skill: 0.74, cruise: 0.9, num: 3 },
-    { name: "토실", color: 0xb388ff, hex: "#8d62e8", u: -3.25, skill: 0.88, cruise: 0.955, num: 4 },
+    { name: "콩이", color: 0x2fcea0, hex: "#1aa87a", u: -1.2, skill: 0.97, cruise: 1.02, num: 2 },
+    { name: "뭉치", color: 0xffc107, hex: "#e0a100", u: 3.2, skill: 0.84, cruise: 0.97, num: 3 },
+    { name: "토실", color: 0xb388ff, hex: "#8d62e8", u: -3.25, skill: 0.93, cruise: 1.0, num: 4 },
   ];
   specs.forEach((spec, gridIndex) => {
     const mesh = makeKart(spec.color, spec.num, spec.name, spec.hex);
@@ -1163,8 +1338,14 @@ function buildKarts() {
       boostT: 0,
       boostTier: 0,
       item: null,
+      itemAge: 0,
       shield: false,
       spin: 0,
+      ink: 0,
+      magnet: 0,
+      slowT: 0,
+      cut: null,
+      hazardCd: 0,
       finished: false,
       finishTime: 0,
       launchAt: -10,
@@ -1245,16 +1426,16 @@ function buildItems() {
     bananas.push({ alive: false, s: 0, u: 0, owner: null, grace: 0, life: 0, mesh: g });
   }
 
-  const shotMat = new THREE.MeshStandardMaterial({
-    color: 0xff8fb8,
-    emissive: 0xff4f93,
-    emissiveIntensity: 0.45,
-    roughness: 0.4,
-    flatShading: true,
-  });
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 8; i++) {
     const g = new THREE.Group();
-    const bean = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 6), shotMat);
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0xff8fb8,
+      emissive: 0xff4f93,
+      emissiveIntensity: 0.45,
+      roughness: 0.4,
+      flatShading: true,
+    });
+    const bean = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 6), mat);
     bean.scale.set(0.85, 1.05, 0.85);
     const flame = new THREE.Mesh(
       new THREE.ConeGeometry(0.12, 0.4, 6),
@@ -1265,7 +1446,15 @@ function buildItems() {
     g.add(bean, flame);
     g.visible = false;
     scene.add(g);
-    missiles.push({ alive: false, s: 0, u: 0, owner: null, life: 0, speed: 0, mesh: g });
+    missiles.push({ alive: false, s: 0, u: 0, owner: null, life: 0, speed: 0, kind: "bean", mesh: g, mat });
+  }
+  const slickMat = new THREE.MeshBasicMaterial({ color: 0x140e22, transparent: true, opacity: 0.9 });
+  for (let i = 0; i < 6; i++) {
+    const mesh = new THREE.Mesh(new THREE.CircleGeometry(1.7, 16), slickMat);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.visible = false;
+    scene.add(mesh);
+    slicks.push({ alive: false, s: 0, u: 0, owner: null, grace: 0, life: 0, mesh });
   }
 }
 
@@ -1457,9 +1646,12 @@ function angDist(a, b) {
 }
 
 function passedLaunch(s0, s1) {
-  if (launchS < 0) return false;
-  if (s1 >= s0) return launchS >= s0 && launchS < s1;
-  return launchS >= s0 || launchS < s1;
+  for (const s of launches) {
+    if (s1 >= s0) {
+      if (s >= s0 && s < s1) return true;
+    } else if (s >= s0 || s < s1) return true;
+  }
+  return false;
 }
 
 function copyFrame(src, kart) {
@@ -1498,14 +1690,29 @@ function readInput() {
 }
 
 function aiInput(kart) {
-  sampleInto(kart.s + 14 + kart.skill * 10, lookFr);
-  const apex = THREE.MathUtils.clamp(-lookFr.curvature * 150, -lookFr.half + 1.5, lookFr.half - 1.5);
-  let steer = (apex * kart.skill - kart.u) * 0.42 - kart.uVel * 0.1;
-  steer += (1 - kart.skill) * Math.sin(kart.s * 0.05 + kart.phase) * 0.28;
-  if (Math.abs(kart.u) > kart.half - 2.1) steer += -Math.sign(kart.u) * 0.85;
+  const look = 11 + kart.speed * 0.48;
+  sampleInto(kart.s + look, lookFr);
+  sampleInto(kart.s + Math.min(9, look * 0.38), nearFr);
+  const farC = lookFr.curvature;
+  const nearC = nearFr.curvature;
+  const half = Math.max(2.4, lookFr.half);
+  const apex = THREE.MathUtils.clamp(-farC * 78, -half + 1.15, half - 1.15);
+  let target = apex;
+  if (Math.abs(farC) > 0.02 && Math.abs(nearC) < 0.011) target = -apex * 0.62;
+  let steer = (target - kart.u) * 1.05 - kart.uVel * 0.2;
+  steer += (1 - kart.skill) * Math.sin(kart.s * 0.04 + kart.phase) * 0.16;
+  if (Math.abs(kart.u) > kart.half - 1.35) steer += -Math.sign(kart.u) * 1.2;
+  if (shortcut && !kart.cut) {
+    const ahead = angDist(shortcut.enter, kart.s);
+    const behindPlayer = player && player.odo > kart.odo + 10;
+    const wants = kart.skill > 0.96 || (kart.skill > 0.9 && behindPlayer);
+    if (wants && ahead > -6 && ahead < 42) steer = shortcut.side;
+  }
   steer = THREE.MathUtils.clamp(steer, -1, 1);
-  const sharp = Math.abs(lookFr.curvature) > (kart.drifting ? 0.01 : 0.016);
-  const drift = sharp && kart.speed > CRUISE * 0.55 && Math.abs(steer) > 0.18;
+  const corner = Math.abs(farC) > 0.016 || Math.abs(nearC) > 0.02;
+  let drift = corner && kart.speed > CRUISE * 0.48 && Math.abs(steer) > 0.14;
+  if (kart.drifting && kart.charge < 2.55 && Math.abs(nearC) > 0.01) drift = true;
+  if (kart.drifting && kart.charge >= 1.5 && Math.abs(farC) < 0.011 && Math.abs(nearC) < 0.012) drift = false;
   return { steer, brake: false, drift };
 }
 
@@ -1545,7 +1752,22 @@ function integrate(kart, dt, input) {
     kart.charge = Math.min(3.4, kart.charge + dt * (0.84 + Math.abs(input.steer) * 0.8));
   }
 
-  let target = CRUISE * (kart.me ? 1 : kart.cruise);
+  let cruiseMul = kart.me ? 1 : kart.cruise;
+  if (!kart.me && player && !player.finished) {
+    const gap = player.odo - kart.odo;
+    if (gap > 10) cruiseMul *= 1 + Math.min(0.13, (gap - 10) * 0.0028);
+    else if (gap < -32) cruiseMul *= 0.94;
+  }
+  if (kart.slowT > 0) {
+    kart.slowT = Math.max(0, kart.slowT - dt);
+    cruiseMul *= 0.56;
+  }
+  if (kart.ink > 0) kart.ink = Math.max(0, kart.ink - dt);
+  if (kart.magnet > 0) {
+    kart.magnet = Math.max(0, kart.magnet - dt);
+    cruiseMul *= 1.08;
+  }
+  let target = CRUISE * cruiseMul;
   if (input.brake) target = CRUISE * 0.36;
   if (kart.spin > 0) target *= 0.4;
   if (kart.boostT > 0) {
@@ -1559,6 +1781,11 @@ function integrate(kart, dt, input) {
   const accel = kart.boostT > 0 ? 34 : 24;
   if (kart.speed < target) kart.speed = Math.min(target, kart.speed + accel * dt);
   else kart.speed = Math.max(target, kart.speed - 28 * dt);
+
+  if (kart.cut) {
+    driveCut(kart, dt);
+    return;
+  }
 
   const prevS = kart.s;
   const ds = kart.speed * dt;
@@ -1600,24 +1827,136 @@ function integrate(kart, dt, input) {
     }
   }
 
+  let steerCmd = input.steer;
+  if (kart.magnet > 0) {
+    const ahead = kartAhead(kart);
+    if (ahead) steerCmd = THREE.MathUtils.clamp(steerCmd * 0.25 + THREE.MathUtils.clamp((ahead.u - kart.u) * 0.55, -1, 1), -1, 1);
+  }
+  if (kart.ink > 0) steerCmd *= 0.55;
+  const grip = kart.ink > 0 ? 0.7 : 1;
   const steerRate =
-    (kart.drifting ? 7.5 : 12.4) *
-    (kart.air ? 0.45 : 1) *
-    (0.48 + 0.52 * Math.min(1, kart.speed / Math.max(1, CRUISE)));
-  kart.uVel += input.steer * steerRate * dt;
-  const cent = kart.speed * fr.curvature * 13.2 * (kart.drifting ? 0.3 : 1);
+    (kart.drifting ? 14.5 : 26) *
+    (kart.air ? 0.5 : 1) *
+    grip *
+    (0.8 + 0.2 * Math.min(1, kart.speed / Math.max(1, CRUISE)));
+  kart.uVel += steerCmd * steerRate * dt;
+  const cent = kart.speed * fr.curvature * 18.5 * (kart.drifting ? 0.3 : 1) * (kart.ink > 0 ? 1.35 : 1);
   kart.uVel += cent * dt;
-  kart.uVel *= Math.exp(-(kart.drifting ? 1.55 : 4.3) * dt);
+  kart.uVel *= Math.exp(-(kart.drifting ? 1.2 : 2.85) * dt);
   kart.u += kart.uVel * dt;
-  kart.slip = THREE.MathUtils.clamp(kart.uVel / (kart.speed * 0.25 + 6), -1, 1);
+  kart.slip = THREE.MathUtils.clamp(kart.uVel / (kart.speed * 0.22 + 5), -1, 1);
+  if (kart.magnet > 0) {
+    const ahead = kartAhead(kart);
+    if (ahead) {
+      const gap = angDist(ahead.s, kart.s);
+      if (gap > 3 && gap < 50) kart.speed = Math.min(CRUISE * 1.28, kart.speed + 18 * dt);
+    }
+  }
 
   copyFrame(fr, kart);
-  if (Math.abs(kart.u) > kart.half - 1.65) kart.speed = Math.min(kart.speed, CRUISE * (kart.boostT > 0 ? 1.05 : 0.84));
+  const mouth = shortcut && angDist(kart.s, shortcut.enter) > -18 && angDist(kart.s, shortcut.enter) < 22;
+  if (!mouth && Math.abs(kart.u) > kart.half - 1.65) kart.speed = Math.min(kart.speed, CRUISE * (kart.boostT > 0 ? 1.05 : 0.84));
   clampWall(kart);
 }
 
+function wallLimits(kart) {
+  let lo = -(kart.half - 0.78);
+  let hi = kart.half - 0.78;
+  if (shortcut && !kart.cut) {
+    const ds = angDist(kart.s, shortcut.enter);
+    if (ds > -18 && ds < 22) {
+      if (shortcut.side < 0) lo = -(kart.half + 9);
+      else hi = kart.half + 9;
+    }
+  }
+  return [lo, hi];
+}
+
+function maybeShortcut(kart) {
+  if (!shortcut || kart.cut || kart.finished || kart.air) return;
+  const ds = angDist(kart.s, shortcut.enter);
+  if (ds < -6 || ds > 14) return;
+  const inside = shortcut.side < 0 ? kart.u < -(kart.half + 0.35) : kart.u > kart.half + 0.35;
+  if (inside) beginCut(kart);
+}
+
+function beginCut(kart) {
+  if (!shortcut?.a || !shortcut?.b) return;
+  let arc = shortcut.exit - kart.s;
+  if (arc < 0) arc += L;
+  if (arc < 10 || arc > 220) return;
+  kart.cut = {
+    t: 0,
+    len: Math.max(14, shortcut.len),
+    arc,
+    oiled: false,
+  };
+  kart.u = 0;
+  kart.uVel = 0;
+  if (kart.me && !silentSim) showToast("지름길!");
+}
+
+function driveCut(kart, dt) {
+  const step = kart.speed * dt;
+  kart.cut.t += step;
+  kart.odo += step;
+  const u = Math.min(1, kart.cut.t / kart.cut.len);
+  if (!kart.cut.oiled && u > 0.4 && u < 0.66) {
+    kart.cut.oiled = true;
+    kart.speed *= 0.8;
+    if (kart.me) kart.ink = Math.max(kart.ink, 0.85);
+    if (kart.me && !silentSim) showToast("미끄러!");
+  }
+  placeCut(kart, u);
+  if (kart.cut.t < kart.cut.len) return;
+  const bonus = Math.max(0, kart.cut.arc - kart.cut.len);
+  kart.odo += bonus;
+  kart.s = shortcut.exit;
+  while (kart.s >= L) {
+    kart.s -= L;
+    kart.wraps += 1;
+  }
+  kart.u = shortcut.side * 1.4;
+  kart.uVel = 0;
+  kart.cut = null;
+  sampleInto(kart.s, fr);
+  copyFrame(fr, kart);
+  if (kart.wraps >= 2) finishKart(kart);
+}
+
+function placeCut(kart, u) {
+  kart.pos.lerpVectors(shortcut.a, shortcut.b, u);
+  kart.tan.copy(shortcut.b).sub(shortcut.a);
+  if (kart.tan.lengthSq() < 1e-8) kart.tan.set(1, 0, 0);
+  kart.tan.normalize();
+  kart.right.crossVectors(_yAxis, kart.tan);
+  if (kart.right.lengthSq() < 1e-8) kart.right.set(1, 0, 0);
+  kart.right.normalize();
+  kart.up.crossVectors(kart.tan, kart.right).normalize();
+  kart.half = 3.3;
+  kart.curv = 0;
+  kart.pos.y += 0.05;
+}
+
+function kartAhead(kart) {
+  let best = null;
+  let bestD = 1e9;
+  for (const o of karts) {
+    if (o === kart || o.finished) continue;
+    const d = angDist(o.s, kart.s);
+    if (d > 1.5 && d < bestD) {
+      bestD = d;
+      best = o;
+    }
+  }
+  return best;
+}
+
 function clampWall(kart) {
-  const limit = kart.half - 0.78;
+  maybeShortcut(kart);
+  if (kart.cut) return;
+  const [lo, hi] = wallLimits(kart);
+  const limit = hi;
   if (kart.u > limit) {
     const hit = kart.uVel > 0.45;
     kart.u = limit;
@@ -1626,9 +1965,9 @@ function clampWall(kart) {
       kart.speed *= 0.9;
       if (kart.me && !silentSim) wallBump();
     } else if (kart.uVel > 0) kart.uVel = 0;
-  } else if (kart.u < -limit) {
+  } else if (kart.u < lo) {
     const hit = kart.uVel < -0.45;
-    kart.u = -limit;
+    kart.u = lo;
     if (hit) {
       kart.uVel *= -0.22;
       kart.speed *= 0.9;
@@ -1676,6 +2015,7 @@ function project() {
     }
     stepItems(dt);
     stepBumps(dt);
+    stepHazards(dt);
     t += dt;
   }
   raceTime = saved;
@@ -1693,6 +2033,7 @@ function stepItems(dt) {
       if (k.finished || k.item) continue;
       if (Math.abs(angDist(k.s, box.s)) < 2.5 && Math.abs(k.u - box.u) < 1.75) {
         k.item = BAG[(Math.random() * BAG.length) | 0];
+        k.itemAge = 0;
         k.itemCd = 0.35;
         box.alive = false;
         box.cool = 8;
@@ -1722,19 +2063,46 @@ function stepItems(dt) {
       }
     }
   }
+  for (const slick of slicks) {
+    if (!slick.alive) continue;
+    slick.grace -= dt;
+    slick.life -= dt;
+    if (slick.life <= 0) {
+      slick.alive = false;
+      continue;
+    }
+    if (slick.grace > 0) continue;
+    for (const k of karts) {
+      if (k === slick.owner || k.finished || k.cut) continue;
+      if (Math.abs(angDist(k.s, slick.s)) < 2.4 && Math.abs(k.u - slick.u) < 1.7) {
+        slick.alive = false;
+        inkKart(k);
+        break;
+      }
+    }
+  }
   for (const m of missiles) {
     if (!m.alive) continue;
     let target = null;
     let best = 1e9;
-    for (const k of karts) {
-      if (k === m.owner || k.finished) continue;
-      const d = angDist(k.s, m.s);
-      if (d > 0.4 && d < best && d < 95) {
-        best = d;
-        target = k;
+    if (m.kind === "cannon") {
+      for (const k of karts) {
+        if (k === m.owner || k.finished) continue;
+        if (!target || k.odo > target.odo) target = k;
+      }
+      if (target && angDist(target.s, m.s) < 0) target = null;
+    } else {
+      for (const k of karts) {
+        if (k === m.owner || k.finished) continue;
+        const d = angDist(k.s, m.s);
+        if (d > 0.4 && d < best && d < 95) {
+          best = d;
+          target = k;
+        }
       }
     }
-    if (target) m.u += (target.u - m.u) * Math.min(1, dt * 3.4);
+    const home = m.kind === "cannon" ? 6.5 : 3.4;
+    if (target) m.u += (target.u - m.u) * Math.min(1, dt * home);
     m.s += m.speed * dt;
     if (m.s >= L) m.s -= L;
     m.life -= dt;
@@ -1747,6 +2115,28 @@ function stepItems(dt) {
       }
     }
     if (m.life <= 0) m.alive = false;
+  }
+}
+
+function stepHazards(dt) {
+  for (const k of karts) {
+    if (k.hazardCd > 0) k.hazardCd = Math.max(0, k.hazardCd - dt);
+  }
+  for (const h of hazards) {
+    for (const k of karts) {
+      if (k.finished || k.cut || k.hazardCd > 0) continue;
+      if (Math.abs(angDist(k.s, h.s)) < h.r + 0.4 && Math.abs(k.u - h.u) < h.r) {
+        k.hazardCd = 0.7;
+        if (h.kind === "oil") {
+          k.speed *= 0.8;
+          k.uVel += (Math.random() - 0.5) * 8;
+          if (k.me) k.ink = Math.max(k.ink, 0.7);
+        } else {
+          k.speed *= 0.86;
+          k.uVel *= 0.45;
+        }
+      }
+    }
   }
 }
 
@@ -1813,33 +2203,34 @@ function burst(kart, hex) {
 
 function maybeAiItem(kart, dt) {
   if (kart.me || kart.finished || !kart.item) return;
+  kart.itemAge += dt;
   kart.itemCd -= dt;
   if (kart.itemCd > 0) return;
   const it = kart.item;
-  if (it === "shield") {
+  const ahead = (min, max) =>
+    karts.some((o) => {
+      if (o === kart || o.finished) return false;
+      const d = angDist(o.s, kart.s);
+      return d > min && d < max;
+    });
+  const behind = karts.some((o) => {
+    if (o === kart || o.finished) return false;
+    const d = angDist(kart.s, o.s);
+    return d > 2 && d < 34;
+  });
+  const leading = !karts.some((o) => o !== kart && !o.finished && o.odo > kart.odo + 1);
+  let use = false;
+  if (it === "shield") use = true;
+  else if (it === "missile") use = ahead(3, 80);
+  else if (it === "cannon") use = !leading;
+  else if (it === "banana" || it === "ink") use = behind;
+  else if (it === "magnet") use = ahead(5, 42);
+  else if (it === "lightning") use = !leading && ahead(6, 160);
+  else if (it === "boost" || it === "triple") use = kart.speed < CRUISE * 0.97 || Math.abs(kart.curv) < 0.009 || (player && player.odo > kart.odo + 8);
+  if (!use && kart.itemAge > 4.2) use = true;
+  if (use) {
     useItem(kart);
-    kart.itemCd = 0.8;
-    return;
-  }
-  if (
-    it === "missile" &&
-    karts.some((o) => o !== kart && !o.finished && angDist(o.s, kart.s) > 3 && angDist(o.s, kart.s) < 75)
-  ) {
-    useItem(kart);
-    kart.itemCd = 1.3;
-    return;
-  }
-  if (
-    it === "banana" &&
-    karts.some((o) => o !== kart && !o.finished && angDist(kart.s, o.s) > 2 && angDist(kart.s, o.s) < 30)
-  ) {
-    useItem(kart);
-    kart.itemCd = 1.3;
-    return;
-  }
-  if (it === "boost" && (kart.speed < CRUISE * kart.cruise * 0.93 || Math.abs(kart.curv) < 0.008)) {
-    useItem(kart);
-    kart.itemCd = 1.6;
+    kart.itemCd = 0.7;
   }
 }
 
@@ -1847,15 +2238,26 @@ function useItem(kart) {
   if (!kart?.item || kart.finished || (state !== "racing" && !silentSim)) return;
   const it = kart.item;
   kart.item = null;
+  kart.itemAge = 0;
   if (it === "boost") {
     kart.boostTier = Math.max(kart.boostTier, 2);
-    kart.boostT = Math.min(1.65, kart.boostT + 0.86);
+    kart.boostT = Math.min(1.65, kart.boostT + 0.9);
+    if (kart.me && !silentSim) sfx.boost();
+  } else if (it === "triple") {
+    kart.boostTier = 3;
+    kart.boostT = Math.min(2.2, kart.boostT + 1.45);
     if (kart.me && !silentSim) sfx.boost();
   } else if (it === "shield") {
     kart.shield = true;
     if (kart.me && !silentSim) sfx.tone(520, 0.12, "sine", 0.05);
   } else if (it === "banana") dropBanana(kart);
-  else if (it === "missile") fireMissile(kart);
+  else if (it === "ink") dropSlick(kart);
+  else if (it === "missile") fireMissile(kart, "bean");
+  else if (it === "cannon") fireMissile(kart, "cannon");
+  else if (it === "magnet") {
+    kart.magnet = Math.max(kart.magnet, 2.35);
+    if (kart.me && !silentSim) sfx.tone(440, 0.12, "sine", 0.05);
+  } else if (it === "lightning") zapAhead(kart);
   if (kart.me && !silentSim) showToast(ITEM_INFO[it].name);
 }
 
@@ -1871,17 +2273,84 @@ function dropBanana(kart) {
   b.life = 13;
 }
 
-function fireMissile(kart) {
+function dropSlick(kart) {
+  const b = slicks.find((x) => !x.alive);
+  if (!b) return;
+  b.alive = true;
+  b.s = kart.s - 5.5;
+  if (b.s < 0) b.s += L;
+  b.u = kart.u;
+  b.owner = kart;
+  b.grace = 0.45;
+  b.life = 12;
+}
+
+function fireMissile(kart, kind) {
   const m = missiles.find((x) => !x.alive);
   if (!m) return;
   m.alive = true;
-  m.s = kart.s + 2.2;
+  m.kind = kind;
+  m.s = kart.s + 2.4;
   if (m.s >= L) m.s -= L;
   m.u = kart.u;
   m.owner = kart;
-  m.life = 3.3;
-  m.speed = CRUISE * 1.78;
-  if (kart.me && !silentSim) sfx.tone(300, 0.12, "sawtooth", 0.04);
+  m.life = kind === "cannon" ? 2.5 : 3.3;
+  m.speed = CRUISE * (kind === "cannon" ? 2.25 : 1.78);
+  if (m.mat) {
+    if (kind === "cannon") {
+      m.mat.color.setHex(0xffe066);
+      m.mat.emissive.setHex(0xff7a1a);
+    } else {
+      m.mat.color.setHex(0xff8fb8);
+      m.mat.emissive.setHex(0xff4f93);
+    }
+  }
+  if (kart.me && !silentSim) sfx.tone(kind === "cannon" ? 180 : 300, 0.12, "sawtooth", 0.04);
+}
+
+function inkKart(kart) {
+  if (kart.finished) return;
+  if (kart.shield) {
+    kart.shield = false;
+    if (kart.me && !silentSim) showToast("막았다!");
+    return;
+  }
+  kart.ink = Math.max(kart.ink, kart.me ? 2.7 : 2.1);
+  kart.speed *= 0.78;
+  kart.uVel += (Math.random() - 0.5) * 7;
+  if (!silentSim && kart.me) {
+    shake = Math.max(shake, 0.2);
+    showToast("먹물!");
+    sfx.tone(90, 0.16, "square", 0.04);
+  }
+}
+
+function zapAhead(kart) {
+  let hit = 0;
+  for (const o of karts) {
+    if (o === kart || o.finished) continue;
+    if (o.odo <= kart.odo + 0.5) continue;
+    hit += 1;
+    if (o.shield) {
+      o.shield = false;
+      if (o.me && !silentSim) showToast("막았다!");
+      continue;
+    }
+    o.slowT = Math.max(o.slowT, 2.15);
+    o.speed = Math.min(o.speed, CRUISE * 0.62);
+    o.boostT = 0;
+    if (!silentSim) {
+      burst(o, 0xffe066);
+      if (o.me) {
+        shake = Math.max(shake, 0.45);
+        showToast("번개!");
+        sfx.tone(880, 0.08, "square", 0.05);
+        flashEl.classList.add("zap");
+        setTimeout(() => flashEl.classList.remove("zap"), 160);
+      }
+    }
+  }
+  if (hit === 0 && kart.me && !silentSim) showToast("앞에 없어!");
 }
 
 function standings() {
@@ -1905,6 +2374,7 @@ function stepRace(dt) {
   if (state !== "racing") return;
   stepItems(dt);
   stepBumps(dt);
+  stepHazards(dt);
 }
 
 function poseKart(kart, dt, time) {
@@ -1920,16 +2390,17 @@ function poseKart(kart, dt, time) {
   _basis.makeBasis(_right, _up, _tan);
   _quat.setFromRotationMatrix(_basis);
   const spinYaw = kart.spin > 0 ? (0.85 - Math.max(0, kart.spin)) * 12 : 0;
-  _yaw.setFromAxisAngle(_yAxis, -kart.slip * 0.5 + spinYaw);
+  const nose = kart.steer * (kart.drifting ? 0.78 : 0.46);
+  _yaw.setFromAxisAngle(_yAxis, nose + spinYaw);
   kart.mesh.quaternion.copy(_quat).multiply(_yaw);
 
   const ud = kart.mesh.userData;
   const leanZ = -kart.steer * 0.34 - kart.slip * 0.38;
-  ud.lean.rotation.z = THREE.MathUtils.damp(ud.lean.rotation.z, leanZ, 8, dt || 0.016);
+  ud.lean.rotation.z = THREE.MathUtils.damp(ud.lean.rotation.z, leanZ, 14, dt || 0.016);
   ud.lean.rotation.x = THREE.MathUtils.damp(ud.lean.rotation.x, kart.air ? -0.22 : kart.brake ? 0.06 : 0.02, 6, dt || 0.016);
   kart.wheelRot += kart.speed * (dt || 0) / 0.28;
   for (const w of ud.wheels) w.rotation.x = kart.wheelRot;
-  for (const f of ud.fronts) f.rotation.y = -kart.steer * 0.55;
+  for (const f of ud.fronts) f.rotation.y = kart.steer * 0.72;
   ud.bean.position.y = 0.82 + Math.sin(time * 9 + kart.phase) * 0.025 * Math.min(1, kart.speed / 8);
   ud.flame.visible = kart.boostT > 0;
   if (kart.boostT > 0) {
@@ -2037,13 +2508,34 @@ function updateWorld(dt, time) {
     b.mesh.position.copy(fr.pos).addScaledVector(fr.right, b.u).addScaledVector(fr.up, 0.32);
     b.mesh.rotation.y += dt * 2;
   }
+  for (const slick of slicks) {
+    slick.mesh.visible = slick.alive;
+    if (!slick.alive) continue;
+    sampleInto(slick.s, fr);
+    slick.mesh.position.copy(fr.pos).addScaledVector(fr.right, slick.u).addScaledVector(fr.up, 0.1);
+  }
   for (const m of missiles) {
     m.mesh.visible = m.alive;
     if (!m.alive) continue;
     sampleInto(m.s, fr);
-    m.mesh.position.copy(fr.pos).addScaledVector(fr.right, m.u).addScaledVector(fr.up, 0.7);
+    m.mesh.position.copy(fr.pos).addScaledVector(fr.right, m.u).addScaledVector(fr.up, m.kind === "cannon" ? 0.95 : 0.7);
+    m.mesh.scale.setScalar(m.kind === "cannon" ? 1.35 : 1);
     _basis.makeBasis(fr.right, fr.up, fr.tangent);
     m.mesh.quaternion.setFromRotationMatrix(_basis);
+  }
+  if (state === "racing") {
+    for (const k of karts) {
+      if (k.magnet <= 0 || k.finished) continue;
+      const ahead = kartAhead(k);
+      if (!ahead || (k.gridIndex + Math.floor(time * 12)) % (k.me ? 1 : 3) !== 0) continue;
+      spawnPuff(
+        (k.pos.x + ahead.pos.x) * 0.5,
+        (k.pos.y + ahead.pos.y) * 0.5 + 0.8,
+        (k.pos.z + ahead.pos.z) * 0.5,
+        0x8ec5ff,
+        { life: 0.25, vx: 0, vy: 0.4, vz: 0 }
+      );
+    }
   }
   for (const flag of flags) {
     flag.userData.cloth.rotation.y = Math.sin(time * 3.2 + flag.userData.phase) * 0.45;
@@ -2136,6 +2628,7 @@ function updateHud(dt) {
   }
   player.lastPlace = place;
   player.place = place;
+  inkEl?.classList.toggle("on", player.ink > 0.08);
   if (toastTimer > 0) {
     toastTimer -= dt;
     if (toastTimer <= 0) toastEl.classList.add("hidden");
@@ -2266,8 +2759,14 @@ function resetRace() {
     k.boostT = 0;
     k.boostTier = 0;
     k.item = null;
+    k.itemAge = 0;
     k.shield = false;
     k.spin = 0;
+    k.ink = 0;
+    k.magnet = 0;
+    k.slowT = 0;
+    k.cut = null;
+    k.hazardCd = 0;
     k.finished = false;
     k.finishTime = 0;
     k.launchAt = -10;
@@ -2284,6 +2783,9 @@ function resetRace() {
   }
   for (const b of bananas) b.alive = false;
   for (const m of missiles) m.alive = false;
+  for (const s of slicks) s.alive = false;
+  inkEl?.classList.remove("on");
+  flashEl.classList.remove("zap");
   camSnap = 3;
   placeAll();
 }
@@ -2477,6 +2979,7 @@ buildTrack();
 buildRoad();
 buildBarriers();
 buildScenery();
+buildCourseFeatures();
 buildKarts();
 buildItems();
 buildMinimap();
@@ -2503,6 +3006,9 @@ window.__kongTrider = {
   get maxCurvature() {
     return maxAbsCurv;
   },
+  get jumps() {
+    return launches.length;
+  },
   snapshot() {
     return karts.map((k) => ({
       name: k.name,
@@ -2516,7 +3022,15 @@ window.__kongTrider = {
       item: k.item,
       boost: k.boostT,
       air: k.air,
+      ink: k.ink,
+      magnet: k.magnet,
+      slow: k.slowT,
+      shield: k.shield,
       charge: k.charge,
+      steer: k.steer,
+      drifting: k.drifting,
+      half: k.half,
+      uVel: k.uVel,
       place: k.place,
       wraps: k.wraps,
       curv: k.curv,
