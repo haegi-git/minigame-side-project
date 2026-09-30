@@ -411,7 +411,12 @@ button,
   pointer-events: auto;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+}
+
+.pedals {
+  display: flex;
+  gap: 8px;
 }
 
 .touch-btn {
@@ -422,6 +427,14 @@ button,
   box-shadow: 3px 3px 0 var(--ink);
   user-select: none;
   -webkit-user-select: none;
+}
+
+.touch-btn.accel {
+  background: var(--lemon);
+}
+
+.touch-btn.brake {
+  background: #c5ddff;
 }
 
 .touch-btn.drift {
@@ -438,6 +451,9 @@ button,
 }
 
 @media (hover: none), (pointer: coarse) {
+  body .lupin-widget.game {
+    bottom: max(196px, env(safe-area-inset-bottom) + 180px);
+  }
   .touch-ui:not(.hidden) {
     display: flex;
   }
@@ -574,7 +590,7 @@ button,
   .minimap {
     width: 104px;
     height: 72px;
-    bottom: max(154px, calc(env(safe-area-inset-bottom) + 142px));
+    bottom: max(168px, calc(env(safe-area-inset-bottom) + 156px));
   }
   .toast {
     top: 24%;

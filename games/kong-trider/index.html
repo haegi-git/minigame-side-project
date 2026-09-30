@@ -49,7 +49,7 @@
             <small id="item-name">없음</small>
           </div>
         </div>
-        <p class="keys" id="hud-keys">← → 핸들 · Shift 드리프트 · F 아이템 · ↓ 브레이크</p>
+        <p class="keys" id="hud-keys">↑ 가속 · ← → 핸들 · Shift 드리프트 · Ctrl 아이템 · ↓ 브레이크</p>
       </section>
 
       <section id="start" class="overlay">
@@ -57,14 +57,15 @@
           <p class="kicker">심심타임</p>
           <h1>콩트라이더</h1>
           <p class="lead">
-            헤어핀, 뱅크, 터널, 좁은 길, 지름길이 있는 3D 콩밭을 한 바퀴, 약 1분. 드리프트로 부스터를 모으고, 아이템으로 라이벌을 따돌리세요.
+            헤어핀, 뱅크, 터널, 좁은 길, 지름길이 있는 3D 콩밭을 한 바퀴, 약 1분. 핸들은 직접 꺾고, 가드레일은 들이받으면 미끄러지며 속도가 죽습니다. 드리프트로 부스터를 모으고, 아이템으로 라이벌을 따돌리세요.
           </p>
           <ul class="controls">
-            <li class="kb-only"><kbd>←</kbd> <kbd>→</kbd> 또는 <kbd>A</kbd> <kbd>D</kbd> 핸들 · 액셀은 자동</li>
-            <li class="kb-only"><kbd>Shift</kbd> 또는 <kbd>Space</kbd> 길게 드리프트 · 놓으면 부스터</li>
-            <li class="kb-only"><kbd>↓</kbd> <kbd>S</kbd> 브레이크 · <kbd>F</kbd> 아이템</li>
-            <li class="touch-only">왼쪽 스틱 핸들 · 아래로 브레이크</li>
-            <li class="touch-only">오른쪽 드리프트 길게 · 아이템 버튼</li>
+            <li class="kb-only"><kbd>↑</kbd> <kbd>W</kbd> 가속 · <kbd>↓</kbd> <kbd>S</kbd> 브레이크 / 후진</li>
+            <li class="kb-only"><kbd>←</kbd> <kbd>→</kbd> 또는 <kbd>A</kbd> <kbd>D</kbd> 핸들</li>
+            <li class="kb-only"><kbd>Shift</kbd> 길게 드리프트 · 놓으면 부스터</li>
+            <li class="kb-only"><kbd>Ctrl</kbd> <kbd>F</kbd> <kbd>E</kbd> 아이템</li>
+            <li class="touch-only">왼쪽 스틱 핸들 · 오른쪽 가속 / 브레이크</li>
+            <li class="touch-only">드리프트 길게 · 아이템 버튼</li>
           </ul>
           <p class="item-legend">
             🔥 부스터 · 🚀 삼단부스터 · 🍌 바나나 · 🖤 먹물 · 🛡️ 방패 · 🫘 콩탄 · 🎯 콩대포 · 🧲 자석 · ⚡ 번개
@@ -95,8 +96,14 @@
           <div class="stick-knob"></div>
         </div>
         <div class="touch-actions">
-          <button type="button" id="btn-item" class="touch-btn item">아이템</button>
-          <button type="button" id="btn-drift" class="touch-btn drift">드리프트</button>
+          <div class="pedals">
+            <button type="button" id="btn-accel" class="touch-btn accel">가속</button>
+            <button type="button" id="btn-brake" class="touch-btn brake">브레이크</button>
+          </div>
+          <div class="pedals">
+            <button type="button" id="btn-drift" class="touch-btn drift">드리프트</button>
+            <button type="button" id="btn-item" class="touch-btn item">아이템</button>
+          </div>
         </div>
       </div>
 
