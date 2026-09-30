@@ -61,7 +61,10 @@ const inkEl = document.getElementById("ink");
 const mapCtx = minimapEl.getContext("2d");
 
 const keys = new Set();
-const stick = { nx: 0, ny: 0, drift: false };
+const stick = { nx: 0, ny: 0, drift: false, accel: false, brake: false };
+// Left input is steer -1. TURN < 0 yaws that hold toward screen-left
+// (viewCheck markX of the old nose point becomes positive).
+const TURN = -1;
 
 const _pos = new THREE.Vector3();
 const _tan = new THREE.Vector3();
@@ -1328,6 +1331,10 @@ function buildKarts() {
       u0: spec.u,
       u: spec.u,
       uVel: 0,
+      sideVel: 0,
+      heading: 0,
+      wallCd: 0,
+      fRight: new THREE.Vector3(),
       speed: 0,
       yLift: 0,
       vy: 0,
@@ -1345,6 +1352,7 @@ function buildKarts() {
       magnet: 0,
       slowT: 0,
       cut: null,
+      onCut: null,
       hazardCd: 0,
       finished: false,
       finishTime: 0,
@@ -1678,42 +1686,75 @@ function pipFills(c) {
   });
 }
 
+function wrapAngle(a) {
+  a %= Math.PI * 2;
+  if (a > Math.PI) a -= Math.PI * 2;
+  if (a < -Math.PI) a += Math.PI * 2;
+  return a;
+}
+
+function wrapS(s) {
+  s %= L;
+  if (s < 0) s += L;
+  return s;
+}
+
 function readInput() {
-  if (state !== "racing") return { steer: 0, brake: false, drift: false };
+  if (state !== "racing") return { steer: 0, brake: false, drift: false, accel: false };
   let steer = 0;
   if (keys.has("ArrowLeft") || keys.has("KeyA")) steer -= 1;
   if (keys.has("ArrowRight") || keys.has("KeyD")) steer += 1;
   if (Math.abs(stick.nx) > 0.12) steer = stick.nx;
-  const brake = keys.has("ArrowDown") || keys.has("KeyS") || stick.ny > 0.55;
+  const brake = keys.has("ArrowDown") || keys.has("KeyS") || stick.brake || stick.ny > 0.55;
+  const accel = (keys.has("ArrowUp") || keys.has("KeyW") || stick.accel) && !brake;
   const drift = stick.drift || keys.has("ShiftLeft") || keys.has("ShiftRight") || keys.has("Space");
-  return { steer: Math.max(-1, Math.min(1, steer)), brake, drift };
+  return { steer: Math.max(-1, Math.min(1, steer)), brake, drift, accel };
 }
 
 function aiInput(kart) {
-  const look = 11 + kart.speed * 0.48;
+  if (kart.onCut && shortcut?.b) {
+    const desired = Math.atan2(shortcut.b.z - kart.pos.z, shortcut.b.x - kart.pos.x);
+    const err = wrapAngle(desired - kart.heading);
+    const steer = THREE.MathUtils.clamp((-err / TURN) * 2.4, -1, 1);
+    return { steer, brake: false, drift: false, accel: true };
+  }
+  const look = 14 + kart.speed * 0.35;
   sampleInto(kart.s + look, lookFr);
-  sampleInto(kart.s + Math.min(9, look * 0.38), nearFr);
+  sampleInto(kart.s + Math.min(9, look * 0.35), nearFr);
   const farC = lookFr.curvature;
   const nearC = nearFr.curvature;
-  const half = Math.max(2.4, lookFr.half);
-  const apex = THREE.MathUtils.clamp(-farC * 78, -half + 1.15, half - 1.15);
-  let target = apex;
-  if (Math.abs(farC) > 0.02 && Math.abs(nearC) < 0.011) target = -apex * 0.62;
-  let steer = (target - kart.u) * 1.05 - kart.uVel * 0.2;
-  steer += (1 - kart.skill) * Math.sin(kart.s * 0.04 + kart.phase) * 0.16;
-  if (Math.abs(kart.u) > kart.half - 1.35) steer += -Math.sign(kart.u) * 1.2;
-  if (shortcut && !kart.cut) {
+  const half = Math.max(2.2, lookFr.half);
+  let apex = THREE.MathUtils.clamp(-farC * 70, -(half - 1.15), half - 1.15);
+  let lateral = apex;
+  if (Math.abs(farC) > 0.02 && Math.abs(nearC) < 0.012) lateral = -apex * 0.62;
+  let tx = lookFr.pos.x + lookFr.right.x * lateral;
+  let tz = lookFr.pos.z + lookFr.right.z * lateral;
+  if (shortcut && !kart.onCut && shortcut.a) {
     const ahead = angDist(shortcut.enter, kart.s);
     const behindPlayer = player && player.odo > kart.odo + 10;
     const wants = kart.skill > 0.96 || (kart.skill > 0.9 && behindPlayer);
-    if (wants && ahead > -6 && ahead < 42) steer = shortcut.side;
+    if (wants && ahead > -6 && ahead < 46) {
+      const u = THREE.MathUtils.clamp((18 - ahead) / 36, 0, 0.45);
+      tx = shortcut.a.x + (shortcut.b.x - shortcut.a.x) * u;
+      tz = shortcut.a.z + (shortcut.b.z - shortcut.a.z) * u;
+    }
   }
+  if (Math.abs(kart.u) > kart.half - 1.2 && !kart.onCut) {
+    sampleInto(kart.s + 8, nearFr);
+    const pull = -Math.sign(kart.u || 1) * kart.half * 0.2;
+    tx = nearFr.pos.x + nearFr.right.x * pull;
+    tz = nearFr.pos.z + nearFr.right.z * pull;
+  }
+  const desired = Math.atan2(tz - kart.pos.z, tx - kart.pos.x);
+  const err = wrapAngle(desired - kart.heading);
+  let steer = THREE.MathUtils.clamp((-err / TURN) * 2.2, -1, 1);
+  steer += (1 - kart.skill) * Math.sin(raceTime * 1.4 + kart.phase) * 0.18;
   steer = THREE.MathUtils.clamp(steer, -1, 1);
-  const corner = Math.abs(farC) > 0.016 || Math.abs(nearC) > 0.02;
-  let drift = corner && kart.speed > CRUISE * 0.48 && Math.abs(steer) > 0.14;
-  if (kart.drifting && kart.charge < 2.55 && Math.abs(nearC) > 0.01) drift = true;
-  if (kart.drifting && kart.charge >= 1.5 && Math.abs(farC) < 0.011 && Math.abs(nearC) < 0.012) drift = false;
-  return { steer, brake: false, drift };
+  const corner = Math.abs(farC) > 0.02 || Math.abs(err) > 0.38;
+  let drift = corner && kart.speed > CRUISE * 0.55 && Math.abs(steer) > 0.28;
+  if (kart.drifting && kart.charge < 1.55 && (Math.abs(nearC) > 0.012 || Math.abs(err) > 0.22)) drift = true;
+  if (kart.drifting && kart.charge >= 1.5 && Math.abs(farC) < 0.011 && Math.abs(err) < 0.28) drift = false;
+  return { steer, brake: false, drift, accel: true };
 }
 
 function releaseDrift(kart) {
@@ -1732,22 +1773,258 @@ function releaseDrift(kart) {
   kart.charge = 0;
 }
 
+function applySpeed(kart, dt, input, cruiseMul) {
+  let top = CRUISE * cruiseMul;
+  if (kart.slowT > 0) top *= 0.56;
+  if (kart.magnet > 0) top *= 1.08;
+  if (kart.spin > 0) top *= 0.45;
+  if (kart.boostT > 0) {
+    kart.boostT -= dt;
+    top = CRUISE * (1.22 + 0.12 * Math.max(1, kart.boostTier));
+    if (kart.boostT <= 0) {
+      kart.boostT = 0;
+      kart.boostTier = 0;
+    }
+  }
+  const accelHeld = input.accel || !kart.me;
+  let target = 0;
+  if (kart.spin > 0) target = Math.min(top * 0.35, Math.max(0, kart.speed));
+  else if (input.brake && kart.speed > 1.15) target = 0;
+  else if (input.brake) target = -0.38 * CRUISE;
+  else if (accelHeld || kart.boostT > 0) target = top;
+  const pushing = kart.speed < target;
+  const rate = pushing ? (kart.boostT > 0 ? 34 : 21) : input.brake ? 28 : 7.5;
+  if (pushing) kart.speed = Math.min(target, kart.speed + rate * dt);
+  else kart.speed = Math.max(target, kart.speed - rate * dt);
+}
+
+function seekS(kart) {
+  const n = frames.length;
+  const spacing = L / n;
+  const steps = 16;
+  sampleInto(kart.s, fr);
+  let baseD = (kart.pos.x - fr.pos.x) ** 2 + (kart.pos.z - fr.pos.z) ** 2;
+  let bestS = kart.s;
+  let bestD = baseD;
+  for (let i = -steps; i <= steps; i++) {
+    if (i === 0) continue;
+    sampleInto(kart.s + i * spacing, fr);
+    const over = Math.max(0, Math.abs(i) - 5);
+    const d = (kart.pos.x - fr.pos.x) ** 2 + (kart.pos.z - fr.pos.z) ** 2 + over * over * 0.8;
+    if (d < bestD) {
+      bestD = d;
+      bestS = kart.s + i * spacing;
+    }
+  }
+  sampleInto(bestS, fr);
+  return wrapS(bestS);
+}
+
+function advanceProgress(kart, newS) {
+  let delta = newS - kart.s;
+  if (delta > L * 0.5) delta -= L;
+  if (delta < -L * 0.5) delta += L;
+  if (Math.abs(delta) < 0.02) return;
+  delta = THREE.MathUtils.clamp(delta, -8, 8);
+  const prev = kart.s;
+  let s = prev + delta;
+  let wrapped = false;
+  if (s >= L) {
+    s -= L;
+    wrapped = delta > 0;
+  } else if (s < 0) s += L;
+  kart.s = s;
+  if (wrapped) {
+    kart.wraps += 1;
+    if (kart.wraps >= 2) finishKart(kart);
+  }
+  if (delta > 0) kart.odo += delta;
+}
+
+function bindFrame(kart) {
+  const dx = kart.pos.x - fr.pos.x;
+  const dz = kart.pos.z - fr.pos.z;
+  kart.u = dx * fr.right.x + dz * fr.right.z;
+  kart.up.copy(fr.up);
+  kart.half = fr.half;
+  kart.curv = fr.curvature;
+  kart.fRight.copy(fr.right);
+  kart.trackH = Math.atan2(fr.tangent.z, fr.tangent.x);
+  if (!kart.air) {
+    kart.pos.y = fr.pos.y + fr.right.y * kart.u;
+    kart.yLift = 0;
+    kart.vy = 0;
+  }
+}
+
+function stepAir(kart, dt, prevS) {
+  if (
+    !kart.air &&
+    prevS != null &&
+    !kart.onCut &&
+    passedLaunch(prevS, kart.s) &&
+    raceTime - kart.launchAt > 2 &&
+    kart.speed > CRUISE * 0.52
+  ) {
+    kart.air = true;
+    kart.vy = kart.speed * 0.16 + 6.4;
+    kart.launchAt = raceTime;
+    if (kart.me && !silentSim) sfx.tone(520, 0.1, "triangle", 0.04);
+  }
+  if (!kart.air) return;
+  kart.vy -= 27 * dt;
+  kart.yLift += kart.vy * dt;
+  if (kart.yLift <= 0) {
+    kart.yLift = 0;
+    kart.air = false;
+    kart.vy = 0;
+    if (kart.me && !silentSim) {
+      shake = Math.max(shake, 0.36);
+      sfx.tone(160, 0.09, "square", 0.04);
+      spawnPuff(kart.pos.x, kart.pos.y + 0.2, kart.pos.z, 0xfffdf8, { life: 0.3, vy: 1.2, vx: 0, vz: 0 });
+    }
+  }
+}
+
+function cutQuery(pos) {
+  const a = shortcut.a;
+  const b = shortcut.b;
+  const abx = b.x - a.x;
+  const abz = b.z - a.z;
+  const len2 = abx * abx + abz * abz || 1;
+  const t = ((pos.x - a.x) * abx + (pos.z - a.z) * abz) / len2;
+  const px = a.x + abx * t;
+  const pz = a.z + abz * t;
+  const lat = (pos.x - px) * shortcut.sideVec.x + (pos.z - pz) * shortcut.sideVec.z;
+  return { t, lat };
+}
+
+function stepShortcut(kart, dt) {
+  if (!shortcut?.a) return;
+  const q = cutQuery(kart.pos);
+  if (!kart.onCut) {
+    const ds = angDist(kart.s, shortcut.enter);
+    const outside = shortcut.side < 0 ? kart.u < -(kart.half - 1.05) : kart.u > kart.half - 1.05;
+    if (outside && ds > -16 && ds < 26 && q.t > -0.04 && q.t < 0.4 && Math.abs(q.lat) < 3.4) {
+      let arc = shortcut.exit - kart.s;
+      if (arc < 0) arc += L;
+      if (arc > 12 && arc < 240) {
+        kart.onCut = { oiled: false, arc, driven: 0 };
+        kart.cut = kart.onCut;
+        if (kart.me && !silentSim) showToast("지름길!");
+      }
+    }
+    return;
+  }
+  const abx = shortcut.b.x - shortcut.a.x;
+  const abz = shortcut.b.z - shortcut.a.z;
+  const abLen = Math.hypot(abx, abz) || 1;
+  const along = (Math.cos(kart.heading) * abx + Math.sin(kart.heading) * abz) / abLen;
+  const driven = Math.max(0, along * kart.speed) * dt;
+  kart.onCut.driven += driven;
+  kart.odo += driven;
+  const limit = 2.75;
+  if (q.t > -0.05 && q.t < 1.05 && Math.abs(q.lat) > limit) {
+    const push = (Math.abs(q.lat) - limit) * Math.sign(q.lat);
+    kart.pos.x -= shortcut.sideVec.x * push;
+    kart.pos.z -= shortcut.sideVec.z * push;
+    if (kart.wallCd <= 0) {
+      kart.speed *= 0.86;
+      kart.wallCd = 0.22;
+      if (kart.me && !silentSim) wallBump();
+    }
+  }
+  if (!kart.onCut.oiled && q.t > 0.4 && q.t < 0.66) {
+    kart.onCut.oiled = true;
+    kart.speed *= 0.8;
+    if (kart.me) kart.ink = Math.max(kart.ink, 0.85);
+    if (kart.me && !silentSim) showToast("미끄러!");
+  }
+  const t = Math.max(0, Math.min(1, q.t));
+  if (!kart.air) kart.pos.y = shortcut.a.y * (1 - t) + shortcut.b.y * t + 0.05;
+  kart.u = shortcut.side * (kart.half + 3);
+  if (q.t < -0.12) {
+    kart.onCut = null;
+    kart.cut = null;
+    return;
+  }
+  if (q.t > 1.02 || (q.t > 0.82 && kart.onCut.driven > shortcut.len + 4)) {
+    kart.odo += Math.max(0, kart.onCut.arc - kart.onCut.driven);
+    kart.s = wrapS(shortcut.exit);
+    kart.onCut = null;
+    kart.cut = null;
+    sampleInto(kart.s, fr);
+    bindFrame(kart);
+    if (kart.wraps >= 2) finishKart(kart);
+  }
+}
+
+function wallLimits(kart) {
+  let lo = -(kart.half - 0.78);
+  let hi = kart.half - 0.78;
+  if (shortcut && !kart.onCut) {
+    const ds = angDist(kart.s, shortcut.enter);
+    if (ds > -12 && ds < 18) {
+      if (shortcut.side < 0) lo = -(kart.half + 12);
+      else hi = kart.half + 12;
+    }
+  }
+  return [lo, hi];
+}
+
+function collideWall(kart, dt) {
+  if (kart.onCut || kart.finished) return;
+  const [lo, hi] = wallLimits(kart);
+  const u = kart.u;
+  if (u <= hi && u >= lo) return;
+  const limit = u > hi ? hi : lo;
+  const nSign = u > hi ? 1 : -1;
+  const push = limit - u;
+  kart.pos.x += kart.fRight.x * push;
+  kart.pos.y += kart.fRight.y * push;
+  kart.pos.z += kart.fRight.z * push;
+  kart.u = limit;
+  const fh = Math.cos(kart.heading);
+  const fz = Math.sin(kart.heading);
+  const yh = -Math.sin(kart.heading);
+  const yz = Math.cos(kart.heading);
+  let vx = fh * kart.speed + yh * kart.sideVel;
+  let vz = fz * kart.speed + yz * kart.sideVel;
+  const nx = kart.fRight.x * nSign;
+  const nz = kart.fRight.z * nSign;
+  const into = vx * nx + vz * nz;
+  if (into > 0) {
+    vx -= nx * into;
+    vz -= nz * into;
+    kart.speed = vx * fh + vz * fz;
+    kart.sideVel = vx * yh + vz * yz;
+    if (into > 2.2 && kart.wallCd <= 0) {
+      kart.speed *= into > 6 ? 0.62 : kart.drifting ? 0.9 : 0.74;
+      kart.wallCd = 0.28;
+      if (kart.me && !silentSim) wallBump();
+    } else if (into > 0.35) {
+      kart.speed *= Math.max(0.84, 1 - 2.4 * dt);
+    }
+  }
+}
+
 function integrate(kart, dt, input) {
   if (kart.finished) return;
+  kart.wallCd = Math.max(0, kart.wallCd - dt);
   if (kart.spin > 0) {
     kart.spin -= dt;
-    input = { steer: input.steer * 0.12, drift: false, brake: false };
+    input = { steer: input.steer * 0.12, drift: false, brake: false, accel: input.accel };
   }
   const holding = input.drift && kart.spin <= 0;
   if (kart.drifting && !holding) releaseDrift(kart);
   kart.drifting = holding;
   kart.steer = input.steer;
-  kart.brake = input.brake;
+  kart.brake = !!input.brake;
   if (
     holding &&
     !kart.air &&
-    kart.speed > CRUISE * 0.4 &&
-    (Math.abs(input.steer) > 0.16 || Math.abs(kart.slip) > 0.34)
+    Math.abs(kart.speed) > CRUISE * 0.4 &&
+    Math.abs(input.steer) > 0.16
   ) {
     kart.charge = Math.min(3.4, kart.charge + dt * (0.84 + Math.abs(input.steer) * 0.8));
   }
@@ -1758,93 +2035,51 @@ function integrate(kart, dt, input) {
     if (gap > 10) cruiseMul *= 1 + Math.min(0.13, (gap - 10) * 0.0028);
     else if (gap < -32) cruiseMul *= 0.94;
   }
-  if (kart.slowT > 0) {
-    kart.slowT = Math.max(0, kart.slowT - dt);
-    cruiseMul *= 0.56;
-  }
+  if (kart.slowT > 0) kart.slowT = Math.max(0, kart.slowT - dt);
   if (kart.ink > 0) kart.ink = Math.max(0, kart.ink - dt);
-  if (kart.magnet > 0) {
-    kart.magnet = Math.max(0, kart.magnet - dt);
-    cruiseMul *= 1.08;
-  }
-  let target = CRUISE * cruiseMul;
-  if (input.brake) target = CRUISE * 0.36;
-  if (kart.spin > 0) target *= 0.4;
-  if (kart.boostT > 0) {
-    kart.boostT -= dt;
-    target = CRUISE * (1.2 + 0.12 * Math.max(1, kart.boostTier));
-    if (kart.boostT <= 0) {
-      kart.boostT = 0;
-      kart.boostTier = 0;
-    }
-  }
-  const accel = kart.boostT > 0 ? 34 : 24;
-  if (kart.speed < target) kart.speed = Math.min(target, kart.speed + accel * dt);
-  else kart.speed = Math.max(target, kart.speed - 28 * dt);
-
-  if (kart.cut) {
-    driveCut(kart, dt);
-    return;
-  }
-
-  const prevS = kart.s;
-  const ds = kart.speed * dt;
-  kart.s += ds;
-  kart.odo += ds;
-  while (kart.s >= L) {
-    kart.s -= L;
-    kart.wraps += 1;
-    if (kart.wraps >= 2) {
-      finishKart(kart);
-      break;
-    }
-  }
-
-  sampleInto(kart.s, fr);
-  if (
-    !kart.air &&
-    passedLaunch(prevS, kart.s) &&
-    raceTime - kart.launchAt > 2 &&
-    kart.speed > CRUISE * 0.52
-  ) {
-    kart.air = true;
-    kart.vy = kart.speed * 0.16 + 6.4;
-    kart.launchAt = raceTime;
-    if (kart.me && !silentSim) sfx.tone(520, 0.1, "triangle", 0.04);
-  }
-  if (kart.air) {
-    kart.vy -= 27 * dt;
-    kart.yLift += kart.vy * dt;
-    if (kart.yLift <= 0) {
-      kart.yLift = 0;
-      kart.air = false;
-      kart.vy = 0;
-      if (kart.me && !silentSim) {
-        shake = Math.max(shake, 0.36);
-        sfx.tone(160, 0.09, "square", 0.04);
-        spawnPuff(kart.pos.x, kart.pos.y + 0.2, kart.pos.z, 0xfffdf8, { life: 0.3, vy: 1.2, vx: 0, vz: 0 });
-      }
-    }
-  }
+  if (kart.magnet > 0) kart.magnet = Math.max(0, kart.magnet - dt);
+  applySpeed(kart, dt, input, cruiseMul);
 
   let steerCmd = input.steer;
+  if (kart.ink > 0) steerCmd *= 0.55;
   if (kart.magnet > 0) {
     const ahead = kartAhead(kart);
-    if (ahead) steerCmd = THREE.MathUtils.clamp(steerCmd * 0.25 + THREE.MathUtils.clamp((ahead.u - kart.u) * 0.55, -1, 1), -1, 1);
+    if (ahead) {
+      const desired = Math.atan2(ahead.pos.z - kart.pos.z, ahead.pos.x - kart.pos.x);
+      const err = wrapAngle(desired - kart.heading);
+      const magSteer = THREE.MathUtils.clamp((-err / TURN) * 1.8, -1, 1);
+      steerCmd = THREE.MathUtils.clamp(steerCmd * 0.25 + magSteer, -1, 1);
+    }
   }
-  if (kart.ink > 0) steerCmd *= 0.55;
-  const grip = kart.ink > 0 ? 0.7 : 1;
-  const steerRate =
-    (kart.drifting ? 14.5 : 26) *
-    (kart.air ? 0.5 : 1) *
-    grip *
-    (0.8 + 0.2 * Math.min(1, kart.speed / Math.max(1, CRUISE)));
-  kart.uVel += steerCmd * steerRate * dt;
-  const cent = kart.speed * fr.curvature * 18.5 * (kart.drifting ? 0.3 : 1) * (kart.ink > 0 ? 1.35 : 1);
-  kart.uVel += cent * dt;
-  kart.uVel *= Math.exp(-(kart.drifting ? 1.2 : 2.85) * dt);
-  kart.u += kart.uVel * dt;
-  kart.slip = THREE.MathUtils.clamp(kart.uVel / (kart.speed * 0.22 + 5), -1, 1);
+  const speedScale = 0.55 + 0.45 * Math.min(1, Math.abs(kart.speed) / Math.max(1, CRUISE));
+  let yawRate = (kart.drifting ? 2.2 : 1.12) * (kart.air ? 0.42 : 1) * speedScale;
+  if (kart.ink > 0) yawRate *= 0.7;
+  kart.heading = wrapAngle(kart.heading + -steerCmd * TURN * yawRate * dt);
+
+  const slipMax = Math.min(Math.abs(kart.speed), CRUISE) * 0.42;
+  const slipTarget = kart.drifting ? TURN * steerCmd * slipMax : 0;
+  kart.sideVel += (slipTarget - kart.sideVel) * Math.min(1, (kart.drifting ? 7 : 12) * dt);
+  if (!kart.drifting) kart.sideVel *= Math.exp(-8 * dt);
+  kart.slip = THREE.MathUtils.clamp(kart.sideVel / (Math.abs(kart.speed) * 0.35 + 4), -1, 1);
+
+  const fh = Math.cos(kart.heading);
+  const fz = Math.sin(kart.heading);
+  kart.pos.x += (fh * kart.speed + -Math.sin(kart.heading) * kart.sideVel) * dt;
+  kart.pos.z += (fz * kart.speed + Math.cos(kart.heading) * kart.sideVel) * dt;
+
+  if (kart.onCut) {
+    stepAir(kart, dt, null);
+    stepShortcut(kart, dt);
+  } else {
+    const prevS = kart.s;
+    const newS = seekS(kart);
+    advanceProgress(kart, newS);
+    bindFrame(kart);
+    stepAir(kart, dt, prevS);
+    stepShortcut(kart, dt);
+    if (!kart.onCut) collideWall(kart, dt);
+  }
+
   if (kart.magnet > 0) {
     const ahead = kartAhead(kart);
     if (ahead) {
@@ -1852,92 +2087,7 @@ function integrate(kart, dt, input) {
       if (gap > 3 && gap < 50) kart.speed = Math.min(CRUISE * 1.28, kart.speed + 18 * dt);
     }
   }
-
-  copyFrame(fr, kart);
-  const mouth = shortcut && angDist(kart.s, shortcut.enter) > -18 && angDist(kart.s, shortcut.enter) < 22;
-  if (!mouth && Math.abs(kart.u) > kart.half - 1.65) kart.speed = Math.min(kart.speed, CRUISE * (kart.boostT > 0 ? 1.05 : 0.84));
-  clampWall(kart);
 }
-
-function wallLimits(kart) {
-  let lo = -(kart.half - 0.78);
-  let hi = kart.half - 0.78;
-  if (shortcut && !kart.cut) {
-    const ds = angDist(kart.s, shortcut.enter);
-    if (ds > -18 && ds < 22) {
-      if (shortcut.side < 0) lo = -(kart.half + 9);
-      else hi = kart.half + 9;
-    }
-  }
-  return [lo, hi];
-}
-
-function maybeShortcut(kart) {
-  if (!shortcut || kart.cut || kart.finished || kart.air) return;
-  const ds = angDist(kart.s, shortcut.enter);
-  if (ds < -6 || ds > 14) return;
-  const inside = shortcut.side < 0 ? kart.u < -(kart.half + 0.35) : kart.u > kart.half + 0.35;
-  if (inside) beginCut(kart);
-}
-
-function beginCut(kart) {
-  if (!shortcut?.a || !shortcut?.b) return;
-  let arc = shortcut.exit - kart.s;
-  if (arc < 0) arc += L;
-  if (arc < 10 || arc > 220) return;
-  kart.cut = {
-    t: 0,
-    len: Math.max(14, shortcut.len),
-    arc,
-    oiled: false,
-  };
-  kart.u = 0;
-  kart.uVel = 0;
-  if (kart.me && !silentSim) showToast("지름길!");
-}
-
-function driveCut(kart, dt) {
-  const step = kart.speed * dt;
-  kart.cut.t += step;
-  kart.odo += step;
-  const u = Math.min(1, kart.cut.t / kart.cut.len);
-  if (!kart.cut.oiled && u > 0.4 && u < 0.66) {
-    kart.cut.oiled = true;
-    kart.speed *= 0.8;
-    if (kart.me) kart.ink = Math.max(kart.ink, 0.85);
-    if (kart.me && !silentSim) showToast("미끄러!");
-  }
-  placeCut(kart, u);
-  if (kart.cut.t < kart.cut.len) return;
-  const bonus = Math.max(0, kart.cut.arc - kart.cut.len);
-  kart.odo += bonus;
-  kart.s = shortcut.exit;
-  while (kart.s >= L) {
-    kart.s -= L;
-    kart.wraps += 1;
-  }
-  kart.u = shortcut.side * 1.4;
-  kart.uVel = 0;
-  kart.cut = null;
-  sampleInto(kart.s, fr);
-  copyFrame(fr, kart);
-  if (kart.wraps >= 2) finishKart(kart);
-}
-
-function placeCut(kart, u) {
-  kart.pos.lerpVectors(shortcut.a, shortcut.b, u);
-  kart.tan.copy(shortcut.b).sub(shortcut.a);
-  if (kart.tan.lengthSq() < 1e-8) kart.tan.set(1, 0, 0);
-  kart.tan.normalize();
-  kart.right.crossVectors(_yAxis, kart.tan);
-  if (kart.right.lengthSq() < 1e-8) kart.right.set(1, 0, 0);
-  kart.right.normalize();
-  kart.up.crossVectors(kart.tan, kart.right).normalize();
-  kart.half = 3.3;
-  kart.curv = 0;
-  kart.pos.y += 0.05;
-}
-
 function kartAhead(kart) {
   let best = null;
   let bestD = 1e9;
@@ -1950,30 +2100,6 @@ function kartAhead(kart) {
     }
   }
   return best;
-}
-
-function clampWall(kart) {
-  maybeShortcut(kart);
-  if (kart.cut) return;
-  const [lo, hi] = wallLimits(kart);
-  const limit = hi;
-  if (kart.u > limit) {
-    const hit = kart.uVel > 0.45;
-    kart.u = limit;
-    if (hit) {
-      kart.uVel *= -0.22;
-      kart.speed *= 0.9;
-      if (kart.me && !silentSim) wallBump();
-    } else if (kart.uVel > 0) kart.uVel = 0;
-  } else if (kart.u < lo) {
-    const hit = kart.uVel < -0.45;
-    kart.u = lo;
-    if (hit) {
-      kart.uVel *= -0.22;
-      kart.speed *= 0.9;
-      if (kart.me && !silentSim) wallBump();
-    } else if (kart.uVel < 0) kart.uVel = 0;
-  }
 }
 
 let wallSnd = 0;
@@ -2129,11 +2255,12 @@ function stepHazards(dt) {
         k.hazardCd = 0.7;
         if (h.kind === "oil") {
           k.speed *= 0.8;
-          k.uVel += (Math.random() - 0.5) * 8;
+          k.sideVel += (Math.random() - 0.5) * 6;
+          k.heading += (Math.random() - 0.5) * 0.35;
           if (k.me) k.ink = Math.max(k.ink, 0.7);
         } else {
           k.speed *= 0.86;
-          k.uVel *= 0.45;
+          k.sideVel *= 0.45;
         }
       }
     }
@@ -2146,19 +2273,29 @@ function stepBumps(dt) {
       const a = karts[i];
       const b = karts[j];
       if (a.finished && b.finished) continue;
-      const ds = angDist(a.s, b.s);
-      const du = a.u - b.u;
-      if (Math.abs(ds) < 2.35 && Math.abs(du) < 1.38) {
-        const push = (1.38 - Math.abs(du)) * 8 * dt;
-        const su = Math.sign(du || (a.gridIndex < b.gridIndex ? 1 : -1));
-        a.u += su * push;
-        b.u -= su * push;
+      if (Math.abs(a.pos.y + a.yLift - (b.pos.y + b.yLift)) > 2.4) continue;
+      const dx = a.pos.x - b.pos.x;
+      const dz = a.pos.z - b.pos.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist < 2.05 && dist > 1e-4) {
+        const push = (2.05 - dist) * 0.55;
+        const nx = dx / dist;
+        const nz = dz / dist;
+        a.pos.x += nx * push;
+        a.pos.z += nz * push;
+        b.pos.x -= nx * push;
+        b.pos.z -= nz * push;
         if (a.speed >= b.speed) b.speed *= 0.985;
         else a.speed *= 0.985;
       }
     }
   }
-  for (const k of karts) clampWall(k);
+  for (const k of karts) {
+    if (k.onCut || k.finished) continue;
+    seekS(k);
+    bindFrame(k);
+    collideWall(k, dt);
+  }
 }
 
 function hitKart(kart) {
@@ -2317,7 +2454,8 @@ function inkKart(kart) {
   }
   kart.ink = Math.max(kart.ink, kart.me ? 2.7 : 2.1);
   kart.speed *= 0.78;
-  kart.uVel += (Math.random() - 0.5) * 7;
+  kart.sideVel += (Math.random() - 0.5) * 6;
+  kart.heading += (Math.random() - 0.5) * 0.25;
   if (!silentSim && kart.me) {
     shake = Math.max(shake, 0.2);
     showToast("먹물!");
@@ -2377,30 +2515,42 @@ function stepRace(dt) {
   stepHazards(dt);
 }
 
+function orientFromHeading(kart) {
+  _tan.set(Math.cos(kart.heading), 0, Math.sin(kart.heading));
+  _up.copy(kart.up);
+  if (_up.lengthSq() < 1e-6) _up.set(0, 1, 0);
+  _up.normalize();
+  _right.crossVectors(_up, _tan);
+  if (_right.lengthSq() < 1e-6) _right.set(0, 0, -1);
+  _right.normalize();
+  _tan.crossVectors(_right, _up).normalize();
+  _up.crossVectors(_tan, _right).normalize();
+  kart.tan.copy(_tan);
+  kart.right.copy(_right);
+}
+
 function poseKart(kart, dt, time) {
+  orientFromHeading(kart);
   const idle = kart.speed < 2 && !kart.air ? Math.sin(time * 2.4 + kart.phase) * 0.035 : 0;
-  _pos.copy(kart.pos).addScaledVector(kart.right, kart.u).addScaledVector(kart.up, kart.yLift + 0.04 + idle);
+  _pos.copy(kart.pos).addScaledVector(kart.up, kart.yLift + 0.04 + idle);
   kart.mesh.position.copy(_pos);
   _right.copy(kart.right);
   _up.copy(kart.up);
   _tan.copy(kart.tan);
-  if (_tan.lengthSq() < 1e-6) _tan.set(0, 0, 1);
-  _right.crossVectors(_up, _tan).normalize();
-  _up.crossVectors(_tan, _right).normalize();
   _basis.makeBasis(_right, _up, _tan);
   _quat.setFromRotationMatrix(_basis);
   const spinYaw = kart.spin > 0 ? (0.85 - Math.max(0, kart.spin)) * 12 : 0;
-  const nose = kart.steer * (kart.drifting ? 0.78 : 0.46);
+  const nose = TURN * kart.steer * (kart.drifting ? 0.78 : 0.46);
   _yaw.setFromAxisAngle(_yAxis, nose + spinYaw);
   kart.mesh.quaternion.copy(_quat).multiply(_yaw);
 
   const ud = kart.mesh.userData;
-  const leanZ = -kart.steer * 0.34 - kart.slip * 0.38;
+  const leanZ = -TURN * kart.steer * 0.34 - kart.slip * 0.38;
   ud.lean.rotation.z = THREE.MathUtils.damp(ud.lean.rotation.z, leanZ, 14, dt || 0.016);
   ud.lean.rotation.x = THREE.MathUtils.damp(ud.lean.rotation.x, kart.air ? -0.22 : kart.brake ? 0.06 : 0.02, 6, dt || 0.016);
   kart.wheelRot += kart.speed * (dt || 0) / 0.28;
   for (const w of ud.wheels) w.rotation.x = kart.wheelRot;
-  for (const f of ud.fronts) f.rotation.y = kart.steer * 0.72;
+  for (const f of ud.fronts) f.rotation.y = TURN * kart.steer * 0.72;
   ud.bean.position.y = 0.82 + Math.sin(time * 9 + kart.phase) * 0.025 * Math.min(1, kart.speed / 8);
   ud.flame.visible = kart.boostT > 0;
   if (kart.boostT > 0) {
@@ -2412,7 +2562,7 @@ function poseKart(kart, dt, time) {
   ud.brakeL.material.emissiveIntensity = brakeI;
   ud.brakeR.material.emissiveIntensity = brakeI;
 
-  ud.blob.position.copy(kart.pos).addScaledVector(kart.right, kart.u);
+  ud.blob.position.copy(kart.pos);
   ud.blob.position.y = kart.pos.y + 0.08;
   ud.blob.material.opacity = 0.3 * Math.max(0, 1 - kart.yLift / 3.5);
   const sc = 1 + kart.yLift * 0.12;
@@ -2448,11 +2598,23 @@ function updateCamera(dt) {
   const kart = player;
   const fwd = kart.tan;
   const up = kart.up;
+  let back = 2.7;
+  const upOff = 1.28 + kart.yLift * 0.12;
+  for (const o of karts) {
+    if (o === kart) continue;
+    const dx = o.mesh.position.x - kart.mesh.position.x;
+    const dz = o.mesh.position.z - kart.mesh.position.z;
+    const along = dx * fwd.x + dz * fwd.z;
+    if (along < -0.5) {
+      const behind = -along;
+      if (behind < back + 0.15) back = Math.max(1.95, behind - 0.3);
+    }
+  }
   _desired
     .copy(kart.mesh.position)
-    .addScaledVector(fwd, -6.85)
-    .addScaledVector(up, 2.72 + kart.yLift * 0.18)
-    .addScaledVector(kart.right, 0.72 - kart.steer * 0.55);
+    .addScaledVector(fwd, -back)
+    .addScaledVector(up, upOff)
+    .addScaledVector(kart.right, 0.16 - kart.steer * 0.1);
   if (shake > 0) {
     _desired.x += (Math.random() - 0.5) * shake;
     _desired.y += (Math.random() - 0.5) * shake * 0.65;
@@ -2463,10 +2625,10 @@ function updateCamera(dt) {
     camera.position.copy(_desired);
     camSnap -= 1;
   } else {
-    camera.position.lerp(_desired, 1 - Math.exp(-3.6 * dt));
+    camera.position.lerp(_desired, 1 - Math.exp(-32 * dt));
   }
-  _look.copy(kart.mesh.position).addScaledVector(fwd, 8.4).addScaledVector(up, 1.2);
-  const roll = -kart.steer * 0.05 - THREE.MathUtils.clamp(kart.uVel, -8, 8) * 0.0045;
+  _look.copy(kart.mesh.position).addScaledVector(fwd, 3.2).addScaledVector(up, 0.48);
+  const roll = -TURN * kart.steer * 0.045 - THREE.MathUtils.clamp(kart.sideVel, -8, 8) * 0.004;
   _camUp.copy(up).applyAxisAngle(fwd, roll);
   camera.up.lerp(_camUp, 1 - Math.exp(-7 * dt)).normalize();
   camera.lookAt(_look);
@@ -2689,7 +2851,7 @@ function drawMinimap() {
   mapCtx.lineWidth = 2;
   mapCtx.stroke();
   for (const k of karts) {
-    const [x, y] = mapPoint(k.pos.x + k.right.x * k.u, k.pos.z + k.right.z * k.u, w, h);
+    const [x, y] = mapPoint(k.pos.x, k.pos.z, w, h);
     mapCtx.beginPath();
     mapCtx.fillStyle = k.hex;
     mapCtx.arc(x, y, k.me ? 5.5 : 3.6, 0, Math.PI * 2);
@@ -2729,7 +2891,13 @@ function showResults() {
 function placeAll() {
   for (const k of karts) {
     sampleInto(k.s, fr);
-    copyFrame(fr, k);
+    k.pos.copy(fr.pos).addScaledVector(fr.right, k.u);
+    k.up.copy(fr.up);
+    k.half = fr.half;
+    k.curv = fr.curvature;
+    k.fRight.copy(fr.right);
+    k.heading = Math.atan2(fr.tangent.z, fr.tangent.x);
+    k.sideVel = 0;
     poseKart(k, 0.016, 0);
   }
   updateCamera(0.016);
@@ -2749,6 +2917,8 @@ function resetRace() {
     k.wraps = 0;
     k.u = k.u0;
     k.uVel = 0;
+    k.sideVel = 0;
+    k.wallCd = 0;
     k.speed = 0;
     k.yLift = 0;
     k.vy = 0;
@@ -2766,6 +2936,7 @@ function resetRace() {
     k.magnet = 0;
     k.slowT = 0;
     k.cut = null;
+    k.onCut = null;
     k.hazardCd = 0;
     k.finished = false;
     k.finishTime = 0;
@@ -2924,6 +3095,10 @@ function bindHold(el, onDown, onUp) {
 
 window.addEventListener("keydown", (e) => {
   if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) e.preventDefault();
+  if ((e.code === "ControlLeft" || e.code === "ControlRight") && state === "racing") {
+    e.preventDefault();
+    if (!e.repeat) useItem(player);
+  }
   if (e.repeat) return;
   keys.add(e.code);
   if ((e.code === "KeyF" || e.code === "KeyE") && state === "racing") useItem(player);
@@ -2932,6 +3107,8 @@ window.addEventListener("keyup", (e) => keys.delete(e.code));
 window.addEventListener("blur", () => {
   keys.clear();
   stick.drift = false;
+  stick.accel = false;
+  stick.brake = false;
   stick.nx = 0;
   stick.ny = 0;
 });
@@ -2945,6 +3122,24 @@ bindHold(
   },
   () => {
     stick.drift = false;
+  }
+);
+bindHold(
+  document.getElementById("btn-accel"),
+  () => {
+    stick.accel = true;
+  },
+  () => {
+    stick.accel = false;
+  }
+);
+bindHold(
+  document.getElementById("btn-brake"),
+  () => {
+    stick.brake = true;
+  },
+  () => {
+    stick.brake = false;
   }
 );
 itemBtn?.addEventListener("pointerdown", (e) => {
@@ -3029,12 +3224,74 @@ window.__kongTrider = {
       charge: k.charge,
       steer: k.steer,
       drifting: k.drifting,
+      heading: k.heading,
+      trackH: k.trackH,
+      sideVel: k.sideVel,
       half: k.half,
       uVel: k.uVel,
+      accel: k.me ? readInput().accel : true,
       place: k.place,
       wraps: k.wraps,
       curv: k.curv,
+      x: k.pos.x,
+      z: k.pos.z,
     }));
+  },
+  markView() {
+    const k = player;
+    camera.updateMatrixWorld();
+    const e = camera.matrixWorld.elements;
+    this._screenRight = { x: e[0], y: e[1], z: e[2] };
+    this._h0 = k.heading;
+    this._mark = {
+      x: k.pos.x + Math.cos(k.heading) * 14,
+      y: k.mesh.position.y + 0.45,
+      z: k.pos.z + Math.sin(k.heading) * 14,
+    };
+  },
+  viewCheck() {
+    const k = player;
+    camera.updateMatrixWorld();
+    _v.set(k.pos.x + Math.cos(k.heading) * 5, k.mesh.position.y + 0.35, k.pos.z + Math.sin(k.heading) * 5);
+    const ahead = _v.clone().project(camera);
+    const center = k.mesh.position.clone().project(camera);
+    let markX = null;
+    let towardLeft = null;
+    if (this._mark && this._screenRight) {
+      _v.set(this._mark.x, this._mark.y, this._mark.z);
+      markX = _v.clone().project(camera).x;
+      const dfx = Math.cos(k.heading) - Math.cos(this._h0);
+      const dfz = Math.sin(k.heading) - Math.sin(this._h0);
+      const sr = this._screenRight;
+      towardLeft = -(dfx * sr.x + dfz * sr.z);
+    }
+    camera.getWorldDirection(_desired);
+    let nearestOther = 1e9;
+    for (const o of karts) {
+      if (o.me) continue;
+      const dx = o.mesh.position.x - camera.position.x;
+      const dy = o.mesh.position.y - camera.position.y;
+      const dz = o.mesh.position.z - camera.position.z;
+      const along = dx * _desired.x + dy * _desired.y + dz * _desired.z;
+      if (along < 0.35) continue;
+      nearestOther = Math.min(nearestOther, Math.hypot(dx, dy, dz));
+    }
+    const playerCam = camera.position.distanceTo(k.mesh.position);
+    return {
+      noseDx: ahead.x - center.x,
+      markX,
+      towardLeft,
+      tanLen: Math.round(k.tan.length() * 1000) / 1000,
+      camY: Math.round(camera.position.y * 10) / 10,
+      meshY: Math.round(k.mesh.position.y * 10) / 10,
+      heading: k.heading,
+      steer: k.steer,
+      speed: k.speed,
+      u: Math.round(k.u * 100) / 100,
+      playerCam: Math.round(playerCam * 100) / 100,
+      nearestOther: Math.round(nearestOther * 100) / 100,
+      playerNearest: playerCam + 0.05 < nearestOther,
+    };
   },
 };
 
