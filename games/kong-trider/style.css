@@ -196,7 +196,7 @@ button,
 
 .item-slot small {
   font-family: "Jua", sans-serif;
-  min-width: 42px;
+  min-width: 72px;
 }
 
 .item-slot.ready {
@@ -545,6 +545,29 @@ button,
 #flash.on {
   background: rgba(255, 80, 120, 0.42);
   transition: none;
+}
+
+#flash.zap {
+  background: rgba(255, 230, 80, 0.55);
+  transition: none;
+}
+
+#ink {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(circle at 28% 42%, rgba(18, 10, 28, 0.94) 0 16%, transparent 38%),
+    radial-gradient(circle at 72% 58%, rgba(8, 6, 16, 0.92) 0 20%, transparent 46%),
+    radial-gradient(circle at 48% 24%, rgba(24, 16, 36, 0.78) 0 14%, transparent 36%),
+    radial-gradient(circle at 60% 78%, rgba(12, 8, 20, 0.88) 0 18%, transparent 42%);
+  transition: opacity 0.25s linear;
+}
+
+#ink.on {
+  opacity: 1;
 }
 
 @media (hover: none), (pointer: coarse) {

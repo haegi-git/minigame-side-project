@@ -57,7 +57,7 @@
           <p class="kicker">심심타임</p>
           <h1>콩트라이더</h1>
           <p class="lead">
-            콩밭 서킷을 한 바퀴, 약 1분. 가드레일이 있는 3D 코스에서 드리프트하면 부스터가 3단계로 차고, 놓으면 나가요.
+            헤어핀, 뱅크, 터널, 좁은 길, 지름길이 있는 3D 콩밭을 한 바퀴, 약 1분. 드리프트로 부스터를 모으고, 아이템으로 라이벌을 따돌리세요.
           </p>
           <ul class="controls">
             <li class="kb-only"><kbd>←</kbd> <kbd>→</kbd> 또는 <kbd>A</kbd> <kbd>D</kbd> 핸들 · 액셀은 자동</li>
@@ -66,7 +66,9 @@
             <li class="touch-only">왼쪽 스틱 핸들 · 아래로 브레이크</li>
             <li class="touch-only">오른쪽 드리프트 길게 · 아이템 버튼</li>
           </ul>
-          <p class="item-legend">아이템 · 🔥 부스터 · 🍌 바나나 · 🛡️ 방패 · 🫘 콩탄</p>
+          <p class="item-legend">
+            🔥 부스터 · 🚀 삼단부스터 · 🍌 바나나 · 🖤 먹물 · 🛡️ 방패 · 🫘 콩탄 · 🎯 콩대포 · 🧲 자석 · ⚡ 번개
+          </p>
           <p class="best-line" id="best-line">아직 최고 기록이 없어요</p>
           <button id="btn-start" type="button">레이스 시작</button>
         </div>
@@ -101,6 +103,7 @@
       <canvas id="minimap" class="minimap hidden" width="220" height="148" aria-hidden="true"></canvas>
       <p id="toast" class="toast hidden"></p>
       <div id="flash"></div>
+      <div id="ink"></div>
     </div>
     <script type="module" src="./game.js"></script>
     <script src="../../js/lupin.js" defer></script>
