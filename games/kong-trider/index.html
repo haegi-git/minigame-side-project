@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>콩트라이더 - 심심타임</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🫘</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="../../css/lupin.css" />
+  </head>
+  <body>
+    <div id="game-root">
+      <canvas id="view"></canvas>
+
+      <a class="back" href="../../index.html">← 게임 선택</a>
+      <button id="mute" class="mute" type="button" aria-label="소리 끄기">🔊</button>
+
+      <section id="hud" class="hud hidden">
+        <div class="hud-card">
+          <p class="rank"><span id="rank">1</span><small id="rank-total">/4</small></p>
+          <p class="time" id="time">0:00.00</p>
+          <p class="best-mini" id="hud-best">최고 --</p>
+        </div>
+        <div class="progress-wrap">
+          <div id="progress" class="progress"></div>
+          <span class="lap" id="lap">1/1</span>
+        </div>
+        <div class="hud-row">
+          <div class="boost-meter" id="boost-meter">
+            <span>부스터</span>
+            <div class="pips" id="pips"><i></i><i></i><i></i></div>
+          </div>
+          <div class="item-slot empty" id="item-slot">
+            <b id="item-icon">·</b>
+            <small id="item-name">없음</small>
+          </div>
+        </div>
+        <p class="keys" id="hud-keys">← → 핸들 · Shift 드리프트 · F 아이템 · ↓ 브레이크</p>
+      </section>
+
+      <section id="start" class="overlay">
+        <div class="panel">
+          <p class="kicker">심심타임</p>
+          <h1>콩트라이더</h1>
+          <p class="lead">
+            콩 카트를 타고 구불구불한 코스를 약 1분 동안 달려요. 커브에서 드리프트하면 부스터가 차고, 상자를 먹으면 아이템이 나와요.
+          </p>
+          <ul class="controls">
+            <li class="kb-only"><kbd>←</kbd> <kbd>→</kbd> 또는 <kbd>A</kbd> <kbd>D</kbd> 핸들 · 액셀은 자동</li>
+            <li class="kb-only"><kbd>Shift</kbd> 또는 <kbd>Space</kbd> 길게 드리프트 · 놓으면 부스터</li>
+            <li class="kb-only"><kbd>↓</kbd> <kbd>S</kbd> 브레이크 · <kbd>F</kbd> 아이템</li>
+            <li class="touch-only">왼쪽 스틱 핸들 · 아래로 브레이크</li>
+            <li class="touch-only">오른쪽 드리프트 길게 · 아이템 버튼</li>
+          </ul>
+          <p class="item-legend">아이템 · 🔥 부스터 · 🍌 바나나 · 🛡️ 방패 · 🫘 콩탄</p>
+          <p class="best-line" id="best-line">아직 최고 기록이 없어요</p>
+          <button id="btn-start" type="button">레이스 시작</button>
+        </div>
+      </section>
+
+      <div id="countdown" class="overlay hidden">
+        <p id="count-num">3</p>
+      </div>
+
+      <section id="result" class="overlay hidden">
+        <div class="panel">
+          <h2 id="result-title">골인!</h2>
+          <p id="result-sub" class="lead"></p>
+          <ol id="board" class="board"></ol>
+          <div class="actions">
+            <button id="btn-retry" type="button">한 판 더</button>
+            <a class="ghost" href="../../index.html">로비로</a>
+          </div>
+        </div>
+      </section>
+
+      <div id="touch-ui" class="touch-ui hidden" aria-hidden="true">
+        <div class="stick" id="stick">
+          <div class="stick-knob"></div>
+        </div>
+        <div class="touch-actions">
+          <button type="button" id="btn-item" class="touch-btn item">아이템</button>
+          <button type="button" id="btn-drift" class="touch-btn drift">드리프트</button>
+        </div>
+      </div>
+    </div>
+    <script src="./game.js"></script>
+    <script src="../../js/lupin.js" defer></script>
+  </body>
+</html>

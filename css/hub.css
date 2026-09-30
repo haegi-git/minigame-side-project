@@ -376,6 +376,115 @@ a.card:hover {
   animation-delay: 0.25s;
 }
 
+.kong-preview {
+  background: linear-gradient(180deg, #8ec5ff 0%, #ffe4f2 48%, #7ce7c4 48%, #63d4b0 100%);
+}
+
+.kong-sun {
+  position: absolute;
+  top: 16px;
+  right: 28px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--lemon);
+  border: 3px solid #2b2140;
+}
+
+.kong-road {
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  width: 168px;
+  height: 92px;
+  transform: translateX(-50%);
+  background: linear-gradient(#6a6280, #6a6280);
+  clip-path: polygon(40% 0, 60% 0, 100% 100%, 0 100%);
+  overflow: hidden;
+}
+
+.kong-road::before,
+.kong-road::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 14%;
+  background: repeating-linear-gradient(#ff8fb8 0 8px, #ffe066 8px 16px);
+  animation: kong-scroll 0.45s linear infinite;
+}
+
+.kong-road::before {
+  left: 0;
+}
+
+.kong-road::after {
+  right: 0;
+}
+
+.kong-lane {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  transform: translateX(-50%);
+  background: repeating-linear-gradient(#fffdf8 0 8px, transparent 8px 16px);
+  animation: kong-scroll 0.45s linear infinite;
+}
+
+.kong-box {
+  position: absolute;
+  left: 62%;
+  bottom: 58px;
+  width: 14px;
+  height: 14px;
+  background: var(--lemon);
+  border: 3px solid #2b2140;
+  border-radius: 4px;
+  animation: bob 1.6s ease-in-out infinite;
+}
+
+.kong-kart {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  width: 36px;
+  height: 18px;
+  margin-left: -18px;
+  background: var(--pink);
+  border: 3px solid #2b2140;
+  border-radius: 8px 8px 5px 5px;
+  z-index: 1;
+}
+
+.kong-kart::before,
+.kong-kart::after {
+  content: "";
+  position: absolute;
+  bottom: -5px;
+  width: 8px;
+  height: 10px;
+  background: #2b2140;
+  border-radius: 2px;
+}
+
+.kong-kart::before {
+  left: 2px;
+}
+
+.kong-kart::after {
+  right: 2px;
+}
+
+.mini-bean.kong-driver {
+  left: 50%;
+  bottom: 28px;
+  margin-left: -14px;
+  z-index: 2;
+  animation-duration: 0.45s;
+}
+
 .cell-preview {
   background: #eef6f1;
 }
@@ -491,6 +600,15 @@ footer {
   }
   50% {
     transform: translateY(-8px);
+  }
+}
+
+@keyframes kong-scroll {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 0 16px;
   }
 }
 
