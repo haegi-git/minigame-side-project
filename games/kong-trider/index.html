@@ -13,6 +13,13 @@
     />
     <link rel="stylesheet" href="./style.css" />
     <link rel="stylesheet" href="../../css/lupin.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"
+        }
+      }
+    </script>
   </head>
   <body>
     <div id="game-root">
@@ -25,6 +32,7 @@
         <div class="hud-card">
           <p class="rank"><span id="rank">1</span><small id="rank-total">/4</small></p>
           <p class="time" id="time">0:00.00</p>
+          <p class="speed"><span id="speed">0</span><small>km/h</small></p>
           <p class="best-mini" id="hud-best">최고 --</p>
         </div>
         <div class="progress-wrap">
@@ -49,7 +57,7 @@
           <p class="kicker">심심타임</p>
           <h1>콩트라이더</h1>
           <p class="lead">
-            콩 카트를 타고 구불구불한 코스를 약 1분 동안 달려요. 커브에서 드리프트하면 부스터가 차고, 상자를 먹으면 아이템이 나와요.
+            콩밭 서킷을 한 바퀴, 약 1분. 가드레일이 있는 3D 코스에서 드리프트하면 부스터가 3단계로 차고, 놓으면 나가요.
           </p>
           <ul class="controls">
             <li class="kb-only"><kbd>←</kbd> <kbd>→</kbd> 또는 <kbd>A</kbd> <kbd>D</kbd> 핸들 · 액셀은 자동</li>
@@ -89,8 +97,12 @@
           <button type="button" id="btn-drift" class="touch-btn drift">드리프트</button>
         </div>
       </div>
+
+      <canvas id="minimap" class="minimap hidden" width="220" height="148" aria-hidden="true"></canvas>
+      <p id="toast" class="toast hidden"></p>
+      <div id="flash"></div>
     </div>
-    <script src="./game.js"></script>
+    <script type="module" src="./game.js"></script>
     <script src="../../js/lupin.js" defer></script>
   </body>
 </html>
