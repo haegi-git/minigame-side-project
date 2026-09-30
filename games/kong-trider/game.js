@@ -491,7 +491,7 @@ function buildTrack() {
   for (let i = 0; i < n; i++) {
     const ahead = frames[(i + look) % n];
     const drop = frames[i].tangent.y - ahead.tangent.y;
-    if (frames[i].tangent.y > 0.07 && ahead.tangent.y < 0.03 && drop > 0.1) {
+    if (frames[i].tangent.y > 0.02 && ahead.tangent.y < -0.1 && drop > 0.12) {
       const prev = launches[launches.length - 1];
       if (prev == null || Math.abs(frames[i].s - prev) > 40) {
         frames[i].launch = true;
@@ -510,15 +510,16 @@ function ribbonGeometry(widthPad, yDrop) {
   const positions = new Float32Array(n * 2 * 3);
   const uvs = new Float32Array(n * 2 * 2);
   const indices = [];
+  const lift = 0.03 - yDrop;
   for (let i = 0; i < n; i++) {
     const f = frames[i];
     const half = f.half + widthPad;
     for (let side = 0; side < 2; side++) {
-      const sign = side === 0 ? -1 : 1;
+      const lat = half * (side === 0 ? -1 : 1);
       const o = (i * 2 + side) * 3;
-      positions[o] = f.pos.x + f.right.x * half * sign;
-      positions[o + 1] = f.pos.y + f.up.y * 0.02 - yDrop;
-      positions[o + 2] = f.pos.z + f.right.z * half * sign;
+      positions[o] = f.pos.x + f.right.x * lat + f.up.x * lift;
+      positions[o + 1] = f.pos.y + f.right.y * lat + f.up.y * lift;
+      positions[o + 2] = f.pos.z + f.right.z * lat + f.up.z * lift;
       const uv = (i * 2 + side) * 2;
       uvs[uv] = side;
       uvs[uv + 1] = f.s / 4;
@@ -529,6 +530,21 @@ function ribbonGeometry(widthPad, yDrop) {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
   geo.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
+  const nrm = new THREE.Vector3();
+  const a = new THREE.Vector3();
+  const b = new THREE.Vector3();
+  const c = new THREE.Vector3();
+  a.fromArray(positions, 0);
+  b.fromArray(positions, 6);
+  c.fromArray(positions, 3);
+  nrm.crossVectors(b.sub(a), c.sub(a));
+  if (nrm.dot(frames[0].up) < 0) {
+    for (let i = 0; i < indices.length; i += 3) {
+      const swap = indices[i + 1];
+      indices[i + 1] = indices[i + 2];
+      indices[i + 2] = swap;
+    }
+  }
   geo.setIndex(indices);
   geo.computeVertexNormals();
   return geo;
@@ -612,12 +628,14 @@ function buildBarriers() {
   addInstances(postGeo, mat, spots.length * 2, (i, mesh) => {
     const f = frames[spots[(i / 2) | 0]];
     const side = i % 2 === 0 ? -1 : 1;
+    const lat = side * (f.half + 0.42);
     _dummy.position.set(
-      f.pos.x + f.right.x * side * (f.half + 0.42),
-      f.pos.y + 0.48,
-      f.pos.z + f.right.z * side * (f.half + 0.42)
+      f.pos.x + f.right.x * lat + f.up.x * 0.48,
+      f.pos.y + f.right.y * lat + f.up.y * 0.48,
+      f.pos.z + f.right.z * lat + f.up.z * 0.48
     );
-    _dummy.rotation.set(0, Math.atan2(f.tangent.x, f.tangent.z), 0);
+    _basis.makeBasis(f.right, f.up, f.tangent);
+    _dummy.quaternion.setFromRotationMatrix(_basis);
     _dummy.scale.set(1, 1, 1);
     _dummy.updateMatrix();
     mesh.setMatrixAt(i, _dummy.matrix);
@@ -629,10 +647,11 @@ function buildBarriers() {
   addInstances(railGeo, railMat, spots.length * 2, (i, mesh) => {
     const f = frames[spots[(i / 2) | 0]];
     const side = i % 2 === 0 ? -1 : 1;
+    const lat = side * (f.half + 0.42);
     _dummy.position.set(
-      f.pos.x + f.right.x * side * (f.half + 0.42),
-      f.pos.y + 0.78,
-      f.pos.z + f.right.z * side * (f.half + 0.42)
+      f.pos.x + f.right.x * lat + f.up.x * 0.78,
+      f.pos.y + f.right.y * lat + f.up.y * 0.78,
+      f.pos.z + f.right.z * lat + f.up.z * 0.78
     );
     _basis.makeBasis(f.right, f.up, f.tangent);
     _dummy.quaternion.setFromRotationMatrix(_basis);
@@ -1393,8 +1412,8 @@ function buildItems() {
     emissive: 0xffb703,
     emissiveIntensity: 0.35,
   });
-  const offsets = [-2.4, 1.6, 0, 2.6, -1.4, 0.8];
-  for (let i = 0; i < 6; i++) {
+  let phase = 0;
+  const addBox = (s, u, world) => {
     const group = new THREE.Group();
     const cube = new THREE.Mesh(new THREE.BoxGeometry(1.15, 1.15, 1.15), boxMat);
     const ring = new THREE.Mesh(
@@ -1405,18 +1424,32 @@ function buildItems() {
     group.add(cube, ring);
     scene.add(group);
     boxes.push({
-      s: L * (0.12 + i * 0.13),
-      u: offsets[i],
+      s,
+      u,
+      world,
       alive: true,
       cool: 0,
       mesh: group,
-      phase: i,
+      phase: phase++,
     });
+  };
+  const rowS = [22, 68, 128, 165, 230, 275, 330, 375, 448, 500, 590, 650, 710, 755, 800, 900, 970, 1035, 1088, 1144];
+  for (const raw of rowS) {
+    let s = ((raw % L) + L) % L;
+    if (launchS >= 0 && Math.abs(angDist(s, launchS)) < 18) s = (s + 26) % L;
+    sampleInto(s, fr);
+    const span = Math.min(2.55, Math.max(1.35, fr.half - 1.55));
+    addBox(s, -span, null);
+    addBox(s, 0, null);
+    addBox(s, span, null);
   }
-  if (launchS >= 0) {
-    for (const b of boxes) {
-      const d = Math.abs(angDist(b.s, launchS));
-      if (d < 16) b.s = (b.s + 24) % L;
+  if (shortcut?.a && shortcut?.b) {
+    for (const t of [0.34, 0.68]) {
+      addBox(0, 0, {
+        x: shortcut.a.x + (shortcut.b.x - shortcut.a.x) * t,
+        y: shortcut.a.y + (shortcut.b.y - shortcut.a.y) * t,
+        z: shortcut.a.z + (shortcut.b.z - shortcut.a.z) * t,
+      });
     }
   }
 
@@ -2157,12 +2190,20 @@ function stepItems(dt) {
     }
     for (const k of karts) {
       if (k.finished || k.item) continue;
-      if (Math.abs(angDist(k.s, box.s)) < 2.5 && Math.abs(k.u - box.u) < 1.75) {
+      let got = false;
+      if (box.world) {
+        const dx = k.pos.x - box.world.x;
+        const dz = k.pos.z - box.world.z;
+        got = dx * dx + dz * dz < 4.2 && Math.abs(k.pos.y - box.world.y) < 2.2;
+      } else {
+        got = Math.abs(angDist(k.s, box.s)) < 2.6 && Math.abs(k.u - box.u) < 1.85;
+      }
+      if (got) {
         k.item = BAG[(Math.random() * BAG.length) | 0];
         k.itemAge = 0;
         k.itemCd = 0.35;
         box.alive = false;
-        box.cool = 8;
+        box.cool = 3.2;
         if (k.me && !silentSim) {
           sfx.item();
           showToast(ITEM_INFO[k.item].name);
@@ -2594,12 +2635,68 @@ function poseKart(kart, dt, time) {
   }
 }
 
+function nearestFrame(x, z) {
+  const n = frames.length;
+  let guess = Math.round((((player.s % L) + L) % L / L) * n) % n;
+  let bestI = guess;
+  let best = 1e12;
+  const span = 56;
+  for (let k = -span; k <= span; k++) {
+    const i = (guess + k + n) % n;
+    const f = frames[i];
+    const dx = f.pos.x - x;
+    const dz = f.pos.z - z;
+    const d = dx * dx + dz * dz;
+    if (d < best) {
+      best = d;
+      bestI = i;
+    }
+  }
+  if (best > 1600) {
+    for (let i = 0; i < n; i++) {
+      const f = frames[i];
+      const dx = f.pos.x - x;
+      const dz = f.pos.z - z;
+      const d = dx * dx + dz * dz;
+      if (d < best) {
+        best = d;
+        bestI = i;
+      }
+    }
+  }
+  return frames[bestI];
+}
+
+function conformCamera(pos) {
+  if (player.onCut && shortcut?.a) {
+    const floor = Math.min(player.pos.y, shortcut.a.y, shortcut.b.y) + 0.45;
+    if (pos.y < floor) pos.y = floor;
+    return;
+  }
+  const f = nearestFrame(pos.x, pos.z);
+  const dx = pos.x - f.pos.x;
+  const dz = pos.z - f.pos.z;
+  let u = dx * f.right.x + dz * f.right.z;
+  const limit = Math.max(1.2, f.half - 0.55);
+  if (Math.abs(u) > limit) {
+    const target = Math.sign(u) * limit;
+    const du = target - u;
+    pos.x += f.right.x * du;
+    pos.y += f.right.y * du;
+    pos.z += f.right.z * du;
+    u = target;
+  }
+  const roadY = f.pos.y + f.right.y * u;
+  if (pos.y < roadY + 0.62) pos.y = roadY + 0.62;
+  if (f.tag === "tunnel" && pos.y > roadY + 2.45) pos.y = roadY + 2.45;
+}
+
 function updateCamera(dt) {
   const kart = player;
   const fwd = kart.tan;
   const up = kart.up;
-  let back = 2.7;
-  const upOff = 1.28 + kart.yLift * 0.12;
+  let back = 3.4;
+  const upOff = 1.55 + kart.yLift * 0.12;
   for (const o of karts) {
     if (o === kart) continue;
     const dx = o.mesh.position.x - kart.mesh.position.x;
@@ -2621,13 +2718,15 @@ function updateCamera(dt) {
     shake *= Math.exp(-3.2 * dt);
     if (shake < 0.012) shake = 0;
   }
+  conformCamera(_desired);
   if (camSnap > 0) {
     camera.position.copy(_desired);
     camSnap -= 1;
   } else {
     camera.position.lerp(_desired, 1 - Math.exp(-32 * dt));
   }
-  _look.copy(kart.mesh.position).addScaledVector(fwd, 3.2).addScaledVector(up, 0.48);
+  conformCamera(camera.position);
+  _look.copy(kart.mesh.position).addScaledVector(fwd, 3.9).addScaledVector(up, 0.55);
   const roll = -TURN * kart.steer * 0.045 - THREE.MathUtils.clamp(kart.sideVel, -8, 8) * 0.004;
   _camUp.copy(up).applyAxisAngle(fwd, roll);
   camera.up.lerp(_camUp, 1 - Math.exp(-7 * dt)).normalize();
@@ -2658,8 +2757,13 @@ function updateWorld(dt, time) {
   for (const box of boxes) {
     box.mesh.visible = box.alive;
     if (!box.alive) continue;
-    sampleInto(box.s, fr);
-    box.mesh.position.copy(fr.pos).addScaledVector(fr.right, box.u).addScaledVector(fr.up, 1.15 + Math.sin(time * 2.2 + box.phase) * 0.18);
+    const bob = 1.15 + Math.sin(time * 2.2 + box.phase) * 0.18;
+    if (box.world) {
+      box.mesh.position.set(box.world.x, box.world.y + bob, box.world.z);
+    } else {
+      sampleInto(box.s, fr);
+      box.mesh.position.copy(fr.pos).addScaledVector(fr.right, box.u).addScaledVector(fr.up, bob);
+    }
     box.mesh.rotation.y += dt * 1.6;
     box.mesh.rotation.x = Math.sin(time * 1.4 + box.phase) * 0.15;
   }
