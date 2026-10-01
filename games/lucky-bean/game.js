@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { ITEMS, SLOTS, SLOT_LABEL, RARITY, makePart, outfitTint } from "./parts.js";
 
 const START_MONEY = 1500;
 const GOAL = 500000;
@@ -19,17 +20,18 @@ const WHEEL = [
   { label: "환급", mult: 1, color: "#fffdf8" },
 ];
 
-const ITEMS = [
-  { id: "ribbon", slot: "hat", name: "리본", price: 250, blurb: "말랑한 핑크 리본" },
-  { id: "flower", slot: "hat", name: "꽃핀", price: 350, blurb: "노란 꽃 하나" },
-  { id: "cap", slot: "hat", name: "캡모자", price: 450, blurb: "노란 챙모자" },
-  { id: "prop", slot: "hat", name: "프로펠러", price: 800, blurb: "빙글빙글 돌아요" },
-  { id: "crown", slot: "hat", name: "왕관", price: 1800, blurb: "한탕의 증표" },
-  { id: "glasses", slot: "face", name: "선글라스", price: 500, blurb: "쿨한 검정 테" },
-  { id: "star", slot: "face", name: "별안경", price: 900, blurb: "반짝 별 렌즈" },
-  { id: "bow", slot: "neck", name: "나비넥타이", price: 450, blurb: "신사 콩" },
-  { id: "bell", slot: "neck", name: "방울목걸이", price: 700, blurb: "살랑살랑 방울" },
+const SLOT_TABLE = [
+  { id: "miss", w: 600, mult: 0, label: "꽝" },
+  { id: "pair", w: 220, mult: 1, label: "페어 환급" },
+  { id: "bean", w: 110, mult: 2, sym: "🫘", label: "콩 3개" },
+  { id: "star", w: 45, mult: 4, sym: "⭐", label: "별 3개" },
+  { id: "heart", w: 18, mult: 8, sym: "💗", label: "하트 3개" },
+  { id: "gem", w: 5, mult: 15, sym: "💎", label: "보석 3개" },
+  { id: "crown", w: 2, mult: 40, sym: "👑", label: "왕관 3개" },
 ];
+const SLOT_SYMS = ["🫘", "⭐", "💗", "💎", "👑"];
+const HILO_RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+const COARSE = window.matchMedia("(pointer: coarse)").matches || Math.min(innerWidth, innerHeight) < 700;
 
 const STALLS = [
   {
@@ -75,7 +77,25 @@ const STALLS = [
     color: 0xffb085,
     x: 0,
     z: 11,
-    lead: "세 길 중 당첨 길을 고르면 3배예요.",
+    lead: "세 길 중 당첨 길을 고르면 3배예요. 확률은 1/3입니다.",
+  },
+  {
+    id: "slot",
+    title: "슬롯",
+    npc: "슬롯콩",
+    color: 0xff6b9d,
+    x: -6.2,
+    z: 9.2,
+    lead: "릴 세 개가 멈추면 그림에 따라 배당이 정해져요. 표에 적힌 확률이 전부입니다.",
+  },
+  {
+    id: "hilo",
+    title: "하이로우",
+    npc: "하이콩",
+    color: 0x8ec5ff,
+    x: 6.2,
+    z: 9.2,
+    lead: "다음 카드가 더 높을지 낮을지 맞히면, 남은 장수에 맞춰 배당을 받아요. 같으면 환급.",
   },
   {
     id: "shop",
@@ -130,10 +150,21 @@ const sfx = {
   click() {
     this.tone(440, 0.06, "triangle", 0.04);
   },
+  tick() {
+    this.tone(720, 0.04, "square", 0.03);
+  },
+  win() {
+    this.tone(523, 0.08);
+    setTimeout(() => this.tone(659, 0.08), 70);
+    setTimeout(() => this.tone(784, 0.16), 140);
+  },
+  big() {
+    [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => this.tone(f, 0.18, "triangle", 0.08), i * 90));
+  },
 };
 
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: !COARSE });
+renderer.setPixelRatio(COARSE ? 1 : Math.min(devicePixelRatio, 1.75));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -148,7 +179,7 @@ const hemi = new THREE.HemisphereLight(0xfff1c9, 0x7ecbff, 1.05);
 scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xffffff, 1.3);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(COARSE ? 1024 : 2048, COARSE ? 1024 : 2048);
 sun.shadow.camera.near = 1;
 sun.shadow.camera.far = 70;
 sun.shadow.camera.left = -22;
@@ -160,6 +191,7 @@ scene.add(sun, sun.target);
 
 let money = START_MONEY;
 let look = loadLook();
+persistLookShape();
 let phase = "start";
 let nearStall = null;
 let currentGame = null;
@@ -167,12 +199,16 @@ let currentBet = 0;
 let pendingBet = 0;
 let busy = false;
 let roundOver = false;
+let shopTab = "hat";
+let trying = null;
+let history = [];
 let cardState = null;
+let hiloValue = 7;
 let ladderData = null;
 let wheelRot = 0;
 const colliders = [];
 const npcs = [];
-const spinBits = [];
+const motes = [];
 const player = {
   pos: new THREE.Vector3(3.6, 0.66, 3.2),
   yaw: 0,
@@ -180,18 +216,41 @@ const player = {
   bob: 0,
 };
 
+function emptyEq() {
+  return Object.fromEntries(SLOTS.map((slot) => [slot, null]));
+}
+
 function loadLook() {
   try {
     const raw = JSON.parse(localStorage.getItem(LOOK_KEY));
-    if (raw && Array.isArray(raw.owned) && raw.eq) return raw;
+    if (raw && Array.isArray(raw.owned)) {
+      const eq = emptyEq();
+      if (raw.eq && typeof raw.eq === "object") {
+        for (const slot of SLOTS) {
+          const id = raw.eq[slot];
+          if (typeof id === "string" && ITEMS.some((item) => item.id === id && item.slot === slot)) eq[slot] = id;
+        }
+      }
+      const owned = raw.owned.filter((id) => typeof id === "string");
+      return { owned, eq };
+    }
   } catch {
     /* keep default */
   }
-  return { owned: [], eq: { hat: null, face: null, neck: null } };
+  return { owned: [], eq: emptyEq() };
 }
 
 function saveLook() {
   localStorage.setItem(LOOK_KEY, JSON.stringify(look));
+}
+
+function persistLookShape() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(LOOK_KEY) || "null");
+    if (raw && raw.eq && SLOTS.some((slot) => !(slot in raw.eq))) saveLook();
+  } catch {
+    /* ignore */
+  }
 }
 
 function wait(ms) {
@@ -241,100 +300,24 @@ function mat(color, extra = {}) {
   return new THREE.MeshStandardMaterial({ color, roughness: 0.38, metalness: 0.05, ...extra });
 }
 
-function makePart(id) {
-  const g = new THREE.Group();
-  g.name = id;
-  if (id === "ribbon") {
-    for (const s of [-1, 1]) {
-      const p = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), mat(0xff8fb8));
-      p.position.set(s * 0.16, 0.78, 0.08);
-      p.scale.set(1.1, 0.7, 0.45);
-      g.add(p);
-    }
-    const knot = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 8), mat(0xff5d8f));
-    knot.position.set(0, 0.76, 0.16);
-    g.add(knot);
-  } else if (id === "flower") {
-    const c = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), mat(0xffe066));
-    c.position.set(0.22, 0.78, 0.12);
-    g.add(c);
-    for (let i = 0; i < 5; i++) {
-      const p = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), mat(0xff8fb8));
-      const a = (i / 5) * Math.PI * 2;
-      p.position.set(0.22 + Math.cos(a) * 0.12, 0.78 + Math.sin(a) * 0.12, 0.1);
-      g.add(p);
-    }
-  } else if (id === "cap") {
-    const top = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.38, 0.22, 16), mat(0xffe066));
-    top.position.y = 0.78;
-    const brim = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.05, 0.28), mat(0xffe066));
-    brim.position.set(0, 0.68, 0.28);
-    g.add(top, brim);
-  } else if (id === "prop") {
-    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.28, 8), mat(0x6d5a7a));
-    stem.position.y = 0.9;
-    const blades = new THREE.Group();
-    blades.position.y = 1.04;
-    const b1 = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.04, 0.12), mat(0x8ec5ff));
-    const b2 = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.04, 0.7), mat(0xff8fb8));
-    blades.add(b1, b2);
-    blades.userData.spin = true;
-    g.add(stem, blades);
-    spinBits.push(blades);
-  } else if (id === "crown") {
-    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.34, 0.14, 12), mat(0xffe066, { metalness: 0.35 }));
-    band.position.y = 0.76;
-    g.add(band);
-    for (let i = 0; i < 5; i++) {
-      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.2, 6), mat(0xffe066, { metalness: 0.35 }));
-      const a = (i / 5) * Math.PI * 2;
-      spike.position.set(Math.cos(a) * 0.28, 0.92, Math.sin(a) * 0.28);
-      g.add(spike);
-    }
-  } else if (id === "glasses") {
-    const dark = mat(0x2b2140);
-    for (const s of [-1, 1]) {
-      const r = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.025, 8, 12), dark);
-      r.position.set(s * 0.16, 0.18, 0.5);
-      g.add(r);
-    }
-    const bar = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.03, 0.03), dark);
-    bar.position.set(0, 0.18, 0.5);
-    g.add(bar);
-  } else if (id === "star") {
-    for (const s of [-1, 1]) {
-      const st = new THREE.Mesh(new THREE.OctahedronGeometry(0.11), mat(0xffe066));
-      st.position.set(s * 0.16, 0.18, 0.52);
-      g.add(st);
-    }
-  } else if (id === "bow") {
-    for (const s of [-1, 1]) {
-      const w = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.22, 8), mat(0xff5d8f));
-      w.rotation.z = s * Math.PI / 2;
-      w.position.set(s * 0.1, -0.12, 0.48);
-      g.add(w);
-    }
-  } else if (id === "bell") {
-    const bell = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), mat(0xffe066, { metalness: 0.4 }));
-    bell.position.set(0, -0.22, 0.5);
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.02, 8, 16), mat(0xffe066, { metalness: 0.4 }));
-    ring.position.set(0, -0.08, 0.42);
-    ring.rotation.x = Math.PI / 2.4;
-    g.add(bell, ring);
-  }
-  return g;
+function shownEq() {
+  const eq = { ...look.eq };
+  if (trying) eq[trying.slot] = trying.id;
+  return eq;
 }
 
-function applyLook(bean) {
+function applyLook(bean, eq = shownEq()) {
   const inner = bean.userData.inner;
-  spinBits.length = 0;
   if (inner.userData.gear) inner.remove(inner.userData.gear);
   const gear = new THREE.Group();
   inner.userData.gear = gear;
   inner.add(gear);
-  for (const slot of ["hat", "face", "neck"]) {
-    if (look.eq[slot]) gear.add(makePart(look.eq[slot]));
+  for (const slot of SLOTS) {
+    if (slot === "outfit" || !eq[slot]) continue;
+    const part = makePart(eq[slot]);
+    if (part) gear.add(part);
   }
+  if (inner.userData.bodyMat) inner.userData.bodyMat.color.setHex(outfitTint(eq.outfit));
 }
 
 function createBean(color, name, me) {
@@ -342,6 +325,7 @@ function createBean(color, name, me) {
   const inner = new THREE.Group();
   root.add(inner);
   const bodyMat = mat(color);
+  inner.userData.bodyMat = bodyMat;
   const body = new THREE.Mesh(new THREE.SphereGeometry(0.52, 22, 16), bodyMat);
   body.scale.set(1.08, 1.28, 0.96);
   body.castShadow = true;
@@ -406,39 +390,128 @@ function addCollider(x, z, hw, hd) {
   colliders.push({ x, z, hw, hd });
 }
 
+function plazaMap() {
+  const c = document.createElement("canvas");
+  c.width = 512;
+  c.height = 512;
+  const g = c.getContext("2d");
+  const grd = g.createRadialGradient(256, 256, 40, 256, 256, 260);
+  grd.addColorStop(0, "#fff6fb");
+  grd.addColorStop(0.45, "#ffd0e6");
+  grd.addColorStop(1, "#f3b7d4");
+  g.fillStyle = grd;
+  g.fillRect(0, 0, 512, 512);
+  g.strokeStyle = "rgba(255,255,255,0.45)";
+  g.lineWidth = 3;
+  for (let i = 1; i <= 6; i++) {
+    g.beginPath();
+    g.arc(256, 256, i * 38, 0, Math.PI * 2);
+    g.stroke();
+  }
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    g.beginPath();
+    g.moveTo(256, 256);
+    g.lineTo(256 + Math.cos(a) * 250, 256 + Math.sin(a) * 250);
+    g.stroke();
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+function skyMap() {
+  const c = document.createElement("canvas");
+  c.width = 8;
+  c.height = 256;
+  const g = c.getContext("2d");
+  const grd = g.createLinearGradient(0, 0, 0, 256);
+  grd.addColorStop(0, "#6eb6ff");
+  grd.addColorStop(0.55, "#b9e4ff");
+  grd.addColorStop(1, "#ffe7c4");
+  g.fillStyle = grd;
+  g.fillRect(0, 0, 8, 256);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
 function buildWorld() {
-  const floor = new THREE.Mesh(
-    new THREE.CircleGeometry(16, 48),
-    mat(0xf4d7e8)
+  const sky = new THREE.Mesh(
+    new THREE.SphereGeometry(70, 16, 12),
+    new THREE.MeshBasicMaterial({ map: skyMap(), side: THREE.BackSide, depthWrite: false, fog: false })
   );
+  scene.add(sky);
+
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(16, 64), new THREE.MeshStandardMaterial({ map: plazaMap(), roughness: 0.85 }));
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;
   scene.add(floor);
 
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(15.4, 0.45, 8, 48), mat(0xff8fb8));
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(15.4, 0.28, 8, 64), mat(0xff8fb8));
   ring.rotation.x = Math.PI / 2;
-  ring.position.y = 0.2;
+  ring.position.y = 0.12;
   scene.add(ring);
+  const ring2 = new THREE.Mesh(new THREE.TorusGeometry(14.6, 0.08, 6, 48), mat(0xffe066, { emissive: 0xffe066, emissiveIntensity: 0.25 }));
+  ring2.rotation.x = Math.PI / 2;
+  ring2.position.y = 0.16;
+  scene.add(ring2);
 
-  const water = new THREE.Mesh(new THREE.CylinderGeometry(1.35, 1.5, 0.4, 20), mat(0x8ec5ff));
+  const water = new THREE.Mesh(
+    new THREE.CylinderGeometry(1.35, 1.5, 0.4, 24),
+    mat(0x7ecbff, { emissive: 0x4aa8ff, emissiveIntensity: 0.35, roughness: 0.15, metalness: 0.2 })
+  );
   water.position.y = 0.2;
+  water.name = "fountain";
   scene.add(water);
-  const rim = new THREE.Mesh(new THREE.TorusGeometry(1.55, 0.16, 8, 20), mat(0xffe066));
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(1.55, 0.12, 8, 24), mat(0xffe066, { metalness: 0.3 }));
   rim.rotation.x = Math.PI / 2;
-  rim.position.y = 0.38;
+  rim.position.y = 0.42;
   scene.add(rim);
+  const spout = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.7, 8), mat(0xd7f4ff, { transparent: true, opacity: 0.7, emissive: 0x9fd4ff, emissiveIntensity: 0.4 }));
+  spout.position.y = 0.7;
+  scene.add(spout);
   addCollider(0, 0, 1.7, 1.7);
 
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2;
+  const treeN = COARSE ? 6 : 8;
+  for (let i = 0; i < treeN; i++) {
+    const a = (i / treeN) * Math.PI * 2 + 0.2;
     const tree = new THREE.Group();
-    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.7, 8), mat(0xc4896a));
-    trunk.position.y = 0.35;
-    const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.55, 12, 10), mat(i % 2 ? 0x7ce7c4 : 0xbaf55b));
-    leaf.position.y = 1.05;
-    tree.add(trunk, leaf);
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, 0.8, 8), mat(0xc4896a));
+    trunk.position.y = 0.4;
+    const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.62, 12, 10), mat(i % 2 ? 0x7ce7c4 : 0x8fd06a));
+    leaf.position.y = 1.15;
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 6), mat(i % 3 ? 0xff8fb8 : 0xffe066));
+    cap.position.set(0.2, 1.55, 0.1);
+    tree.add(trunk, leaf, cap);
     tree.position.set(Math.cos(a) * 13.2, 0, Math.sin(a) * 13.2);
     scene.add(tree);
+  }
+
+  const lampN = COARSE ? 4 : 8;
+  for (let i = 0; i < lampN; i++) {
+    const a = (i / lampN) * Math.PI * 2;
+    const lamp = new THREE.Group();
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 1.5, 8), mat(0x2b2140));
+    post.position.y = 0.75;
+    const bulb = new THREE.Mesh(
+      new THREE.SphereGeometry(0.14, 10, 8),
+      mat(0xffe066, { emissive: 0xffe066, emissiveIntensity: 0.8 })
+    );
+    bulb.position.y = 1.55;
+    lamp.add(post, bulb);
+    lamp.position.set(Math.cos(a) * 11.2, 0, Math.sin(a) * 11.2);
+    scene.add(lamp);
+  }
+
+  for (let i = 0; i < (COARSE ? 8 : 14); i++) {
+    const mote = new THREE.Mesh(
+      new THREE.SphereGeometry(0.06, 6, 6),
+      new THREE.MeshBasicMaterial({ color: i % 2 ? 0xff8fb8 : 0xfffdf8, transparent: true, opacity: 0.85 })
+    );
+    mote.position.set(Math.cos(i) * (4 + (i % 4)), 1.2 + (i % 3) * 0.4, Math.sin(i * 1.7) * (4 + (i % 5)));
+    scene.add(mote);
+    motes.push(mote);
   }
 
   for (const s of STALLS) {
@@ -489,8 +562,65 @@ function setNear(stall) {
 }
 
 function hideStages() {
-  for (const id of ["stage-rps", "stage-wheel", "stage-cards", "stage-odd", "stage-ladder"]) {
-    document.getElementById(id).classList.add("hidden");
+  for (const id of ["stage-rps", "stage-wheel", "stage-cards", "stage-odd", "stage-ladder", "stage-slot", "stage-hilo"]) {
+    document.getElementById(id)?.classList.add("hidden");
+  }
+}
+
+function setOdds(text) {
+  const el = document.getElementById("odds-line");
+  if (!el) return;
+  el.textContent = text;
+  el.classList.remove("hidden");
+}
+
+function pushHistory(text, win) {
+  history.unshift({ text, win });
+  history = history.slice(0, 6);
+  const el = document.getElementById("history");
+  if (!el) return;
+  el.innerHTML = history.map((h) => `<li class="${h.win ? "win" : "lose"}">${h.text}</li>`).join("");
+}
+
+function spawnCoins(n) {
+  const host = document.getElementById("fx");
+  if (!host) return;
+  for (let i = 0; i < n; i++) {
+    const c = document.createElement("i");
+    c.className = "coin";
+    c.style.left = `${40 + Math.random() * 20}%`;
+    c.style.setProperty("--dx", `${(Math.random() - 0.5) * 180}px`);
+    c.style.animationDelay = `${Math.random() * 0.15}s`;
+    host.appendChild(c);
+    setTimeout(() => c.remove(), 1100);
+  }
+}
+
+function juice(win, mult) {
+  const panel = document.querySelector("#play .panel");
+  if (!panel) return;
+  panel.classList.remove("shake", "bigwin");
+  void panel.offsetWidth;
+  if (win && mult >= 8) {
+    panel.classList.add("shake", "bigwin");
+    spawnCoins(26);
+    sfx.big();
+    const banner = document.getElementById("big-banner");
+    if (banner) {
+      banner.textContent = "대박!";
+      banner.classList.remove("hidden");
+      setTimeout(() => banner.classList.add("hidden"), 2400);
+    }
+  } else if (win && mult >= 3) {
+    panel.classList.add("shake");
+    spawnCoins(14);
+    sfx.win();
+  } else if (win) {
+    spawnCoins(8);
+    sfx.ok();
+  } else {
+    panel.classList.add("shake");
+    sfx.bad();
   }
 }
 
@@ -575,6 +705,10 @@ function openStall(stall) {
 function closePlay() {
   playEl.classList.add("hidden");
   shopEl.classList.add("hidden");
+  if (trying) {
+    trying = null;
+    if (player.mesh) applyLook(player.mesh);
+  }
   currentGame = null;
   currentBet = 0;
   busy = false;
@@ -619,8 +753,8 @@ function payout(mult, text, win) {
   document.getElementById("play-actions").classList.remove("hidden");
   document.getElementById("btn-cancel").classList.add("hidden");
   document.getElementById("btn-again").disabled = money < MIN_BET;
-  if (win) sfx.ok();
-  else sfx.bad();
+  pushHistory(text, win);
+  juice(win, mult);
   busy = false;
   roundOver = true;
   if (money >= GOAL || money < MIN_BET) {
@@ -658,8 +792,21 @@ function startRound(bet) {
     document.getElementById("dice").classList.remove("spin");
   } else if (currentGame.id === "ladder") {
     document.getElementById("stage-ladder").classList.remove("hidden");
+    setOdds("당첨 확률 1/3 · 맞히면 3배 · 기대값 1.00");
     setupLadder();
+  } else if (currentGame.id === "slot") {
+    document.getElementById("stage-slot").classList.remove("hidden");
+    setOdds("기대값 약 0.92 · 왕관 3개 0.2% · 40배");
+    setupSlot();
+  } else if (currentGame.id === "hilo") {
+    document.getElementById("stage-hilo").classList.remove("hidden");
+    setOdds("맞히면 12÷남은장, 같으면 환급 · 기대값 1.00");
+    setupHilo();
   }
+  if (currentGame.id === "rps") setOdds("승 1/3 → 2배 · 무 1/3 → 환급 · 패 1/3 → 0");
+  if (currentGame.id === "wheel") setOdds("8칸 중 꽝 5 · 2배 1 · 3배 1 · 환급 1 · 기대값 0.75");
+  if (currentGame.id === "cards") setOdds("12번 안에 4쌍을 맞추면 2배");
+  if (currentGame.id === "odd") setOdds("홀 3/6 · 짝 3/6 · 맞히면 2배 · 기대값 1.00");
 }
 
 function setupWheel() {
@@ -689,8 +836,20 @@ async function spinWheel() {
   wheelRot += extra + need;
   const el = document.getElementById("wheel");
   el.style.transform = `rotate(${wheelRot}deg)`;
+  const ticks = [70, 90, 120, 160, 220, 300, 420, 600, 850];
+  ticks.forEach((t) => setTimeout(() => sfx.tick(), t));
   await wait(3900);
   const hit = WHEEL[idx];
+  const prev = WHEEL[(idx + WHEEL.length - 1) % WHEEL.length];
+  const next = WHEEL[(idx + 1) % WHEEL.length];
+  if (hit.mult <= 0 && (prev.mult > 1 || next.mult > 1)) {
+    const near = document.getElementById("play-result");
+    if (near) {
+      near.textContent = "아슬아슬...";
+      near.classList.remove("hidden");
+    }
+    await wait(420);
+  }
   if (hit.mult <= 0) payout(0, "꽝... 바늘이 빈칸에 멈췄어요", false);
   else if (hit.mult === 1) payout(1, `환급! 건 돈 ${format(currentBet)}을 돌려받아요`, true);
   else payout(hit.mult, `${hit.label}! +${format(currentBet * hit.mult)}`, true);
@@ -746,21 +905,136 @@ async function flipCard(i, btn) {
   }
 }
 
+const PIPS = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
+
 async function playOdd(isOdd) {
   if (busy || roundOver || currentGame?.id !== "odd") return;
   busy = true;
   const dice = document.getElementById("dice");
   dice.classList.add("spin");
-  for (let i = 0; i < 10; i++) {
-    dice.textContent = String(1 + Math.floor(Math.random() * 6));
-    await wait(70);
+  for (let i = 0; i < 12; i++) {
+    dice.textContent = PIPS[1 + Math.floor(Math.random() * 6)];
+    sfx.tick();
+    await wait(60 + i * 12);
   }
   const n = 1 + Math.floor(Math.random() * 6);
-  dice.textContent = String(n);
+  dice.textContent = PIPS[n];
   dice.classList.remove("spin");
   const odd = n % 2 === 1;
   if (odd === !!isOdd) payout(2, `${n} · 맞혔어요! +${format(currentBet * 2)}`, true);
   else payout(0, `${n} · 반대였어요...`, false);
+}
+
+function rollSlot() {
+  const total = SLOT_TABLE.reduce((s, row) => s + row.w, 0);
+  let r = Math.random() * total;
+  for (const row of SLOT_TABLE) {
+    r -= row.w;
+    if (r <= 0) return row;
+  }
+  return SLOT_TABLE[0];
+}
+
+function slotFaces(row) {
+  if (row.sym) return [row.sym, row.sym, row.sym];
+  if (row.id === "pair") {
+    const a = SLOT_SYMS[Math.floor(Math.random() * 3)];
+    let b = SLOT_SYMS[Math.floor(Math.random() * SLOT_SYMS.length)];
+    while (b === a) b = SLOT_SYMS[Math.floor(Math.random() * SLOT_SYMS.length)];
+    const faces = [a, a, b];
+    return faces.sort(() => Math.random() - 0.5);
+  }
+  const bag = [...SLOT_SYMS].sort(() => Math.random() - 0.5);
+  return bag.slice(0, 3);
+}
+
+function setupSlot() {
+  for (let i = 0; i < 3; i++) {
+    const reel = document.getElementById(`reel-${i}`);
+    if (!reel) continue;
+    reel.classList.remove("spinning");
+    reel.innerHTML = `<b>${SLOT_SYMS[i % SLOT_SYMS.length]}</b>`;
+  }
+  const btn = document.getElementById("btn-slot");
+  if (btn) btn.disabled = false;
+}
+
+async function spinSlot() {
+  if (busy || roundOver || currentGame?.id !== "slot") return;
+  busy = true;
+  const btn = document.getElementById("btn-slot");
+  if (btn) btn.disabled = true;
+  const row = rollSlot();
+  const faces = slotFaces(row);
+  for (let i = 0; i < 3; i++) {
+    const reel = document.getElementById(`reel-${i}`);
+    reel.classList.add("spinning");
+    const spinFor = 700 + i * 480;
+    const started = performance.now();
+    while (performance.now() - started < spinFor) {
+      reel.innerHTML = `<b>${SLOT_SYMS[Math.floor(Math.random() * SLOT_SYMS.length)]}</b>`;
+      if (i === 2 && faces[0] === faces[1] && performance.now() - started > spinFor - 280) {
+        reel.innerHTML = `<b>${faces[0]}</b>`;
+      }
+      sfx.tick();
+      await wait(70 + i * 20);
+    }
+    reel.classList.remove("spinning");
+    reel.innerHTML = `<b>${faces[i]}</b>`;
+    sfx.click();
+    await wait(180);
+  }
+  if (row.mult <= 0) payout(0, "그림이 어긋났어요...", false);
+  else if (row.mult === 1) payout(1, `페어! 건 돈 ${format(currentBet)}을 돌려받아요`, true);
+  else payout(row.mult, `${row.label}! +${format(Math.round(currentBet * row.mult))}`, true);
+}
+
+function hiloSide(card, dir) {
+  const n = dir === "hi" ? 13 - card : card - 1;
+  return { n, mult: n > 0 ? 12 / n : 0 };
+}
+
+function setupHilo() {
+  hiloValue = 1 + Math.floor(Math.random() * 13);
+  const card = document.getElementById("hilo-card");
+  if (card) {
+    card.textContent = HILO_RANKS[hiloValue - 1];
+    card.classList.remove("flip");
+  }
+  for (const dir of ["hi", "lo"]) {
+    const btn = document.querySelector(`[data-hi="${dir}"]`);
+    const side = hiloSide(hiloValue, dir);
+    if (!btn) continue;
+    const odds = btn.querySelector("small");
+    if (side.n <= 0) {
+      btn.disabled = true;
+      if (odds) odds.textContent = "없음";
+    } else {
+      btn.disabled = false;
+      if (odds) odds.textContent = `${side.n}장 · ×${side.mult.toFixed(2)}`;
+    }
+  }
+}
+
+async function playHilo(dir) {
+  if (busy || roundOver || currentGame?.id !== "hilo") return;
+  const side = hiloSide(hiloValue, dir);
+  if (side.n <= 0) return;
+  busy = true;
+  document.querySelectorAll("[data-hi]").forEach((b) => {
+    b.disabled = true;
+  });
+  const card = document.getElementById("hilo-card");
+  card?.classList.add("flip");
+  sfx.tick();
+  await wait(280);
+  const next = 1 + Math.floor(Math.random() * 13);
+  if (card) card.textContent = HILO_RANKS[next - 1];
+  await wait(220);
+  if (next === hiloValue) payout(1, `같은 ${HILO_RANKS[next - 1]} · 환급`, true);
+  else if ((dir === "hi" && next > hiloValue) || (dir === "lo" && next < hiloValue)) {
+    payout(side.mult, `${HILO_RANKS[next - 1]}! ×${side.mult.toFixed(2)} · +${format(Math.round(currentBet * side.mult))}`, true);
+  } else payout(0, `${HILO_RANKS[next - 1]} · 반대였어요...`, false);
 }
 
 function setupLadder() {
@@ -872,33 +1146,62 @@ async function pickLadder(start) {
 }
 
 function renderShop() {
+  const tabs = document.getElementById("shop-tabs");
   const grid = document.getElementById("shop-grid");
+  if (!tabs || !grid) return;
+  tabs.innerHTML = "";
+  for (const slot of SLOTS) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = SLOT_LABEL[slot];
+    b.className = slot === shopTab ? "on" : "";
+    b.addEventListener("click", () => {
+      shopTab = slot;
+      sfx.click();
+      renderShop();
+    });
+    tabs.appendChild(b);
+  }
   grid.innerHTML = "";
-  for (const item of ITEMS) {
+  for (const item of ITEMS.filter((it) => it.slot === shopTab)) {
     const owned = look.owned.includes(item.id);
     const on = look.eq[item.slot] === item.id;
+    const preview = trying && trying.id === item.id;
     const el = document.createElement("article");
-    el.className = "shop-item";
+    el.className = `shop-item rarity-${item.rarity}${on ? " equipped" : ""}${preview ? " trying" : ""}`;
+    const rare = RARITY[item.rarity];
+    el.innerHTML = `<h3>${item.name}</h3><em style="color:${rare.color}">${rare.name}</em><p>${item.blurb} · ${SLOT_LABEL[item.slot]}</p>`;
+    const row = document.createElement("div");
+    row.className = "row";
+    const price = document.createElement("span");
+    price.textContent = owned ? (on ? "착용 중" : "보유") : `${format(item.price)} 콩알`;
     const btn = document.createElement("button");
     btn.type = "button";
     if (!owned) {
       btn.textContent = money < item.price ? "콩알 부족" : `구매 ${format(item.price)}`;
       btn.disabled = money < item.price;
       btn.addEventListener("click", () => buyItem(item));
+      const tryBtn = document.createElement("button");
+      tryBtn.type = "button";
+      tryBtn.className = "try";
+      tryBtn.textContent = preview ? "해제" : "입어보기";
+      tryBtn.addEventListener("click", () => {
+        trying = preview ? null : { slot: item.slot, id: item.id };
+        applyLook(player.mesh);
+        sfx.click();
+        renderShop();
+      });
+      row.append(price, tryBtn, btn);
     } else if (on) {
       btn.textContent = "벗기";
       btn.classList.add("on");
       btn.addEventListener("click", () => wear(item.slot, null));
+      row.append(price, btn);
     } else {
       btn.textContent = "착용";
       btn.addEventListener("click", () => wear(item.slot, item.id));
+      row.append(price, btn);
     }
-    el.innerHTML = `<h3>${item.name}</h3><p>${item.blurb} · ${item.slot === "hat" ? "모자" : item.slot === "face" ? "얼굴" : "목"}</p>`;
-    const row = document.createElement("div");
-    row.className = "row";
-    const price = document.createElement("span");
-    price.textContent = owned ? (on ? "착용 중" : "보유") : `${format(item.price)} 콩알`;
-    row.append(price, btn);
     el.appendChild(row);
     grid.appendChild(el);
   }
@@ -909,16 +1212,22 @@ function buyItem(item) {
   money -= item.price;
   look.owned.push(item.id);
   look.eq[item.slot] = item.id;
+  if (trying && trying.slot === item.slot) trying = null;
   saveLook();
   applyLook(player.mesh);
   updateHud();
-  sfx.ok();
+  sfx.win();
+  spawnCoins(12);
+  shopEl.classList.remove("just-bought");
+  void shopEl.offsetWidth;
+  shopEl.classList.add("just-bought");
   renderShop();
   if (maybeEnd()) return;
 }
 
 function wear(slot, id) {
   look.eq[slot] = id;
+  if (trying && trying.slot === slot) trying = null;
   saveLook();
   applyLook(player.mesh);
   sfx.click();
@@ -930,9 +1239,22 @@ function interact() {
   openStall(nearStall);
 }
 
-function playRps(choice) {
+const RPS_EMOJI = ["✊", "✋", "✌️"];
+
+async function playRps(choice) {
   if (busy || roundOver || currentGame?.id !== "rps") return;
+  busy = true;
+  const meEl = document.getElementById("rps-me");
+  const npcEl = document.getElementById("rps-npc");
   const npc = Math.floor(Math.random() * 3);
+  for (let i = 0; i < 8; i++) {
+    if (meEl) meEl.textContent = RPS_EMOJI[i % 3];
+    if (npcEl) npcEl.textContent = RPS_EMOJI[(i + 1) % 3];
+    sfx.tick();
+    await wait(90 + i * 18);
+  }
+  if (meEl) meEl.textContent = RPS_EMOJI[choice];
+  if (npcEl) npcEl.textContent = RPS_EMOJI[npc];
   const win = choice === (npc + 1) % 3;
   const draw = choice === npc;
   const mine = RPS_NAME[choice];
@@ -988,13 +1310,24 @@ function tick(now) {
   player.mesh.rotation.y = player.yaw;
   player.mesh.userData.inner.position.y = Math.abs(Math.sin(player.bob)) * 0.08;
 
-  for (const bit of spinBits) {
-    if (bit.parent) bit.rotation.y += dt * 8;
+  const gear = player.mesh.userData.inner.userData.gear;
+  if (gear) {
+    gear.traverse((obj) => {
+      if (obj.userData.spin) obj.rotation.y += dt * 8;
+      if (obj.userData.aura) obj.rotation.y += dt * 0.8;
+      if (obj.userData.pet) obj.position.y = 0.05 + Math.sin(now * 0.004 + 1) * 0.07;
+    });
+  }
+  for (const mote of motes) {
+    mote.position.y += Math.sin(now * 0.001 + mote.position.x) * 0.002;
   }
 
-  const camTarget = tmp.set(player.pos.x, 9.2, player.pos.z + 11);
-  camera.position.lerp(camTarget, 1 - Math.exp(-dt * 3.2));
-  camera.lookAt(player.pos.x, 0.8, player.pos.z);
+  const shopping = phase === "shop";
+  const camTarget = shopping
+    ? tmp.set(player.pos.x + 0.15, 1.45, player.pos.z + 2.55)
+    : tmp.set(player.pos.x, 9.2, player.pos.z + 11);
+  camera.position.lerp(camTarget, 1 - Math.exp(-dt * (shopping ? 6 : 3.2)));
+  camera.lookAt(player.pos.x, shopping ? 0.95 : 0.8, player.pos.z);
   sun.position.set(player.pos.x + 8, 18, player.pos.z - 6);
   sun.target.position.copy(player.pos);
   sun.target.updateMatrixWorld();
@@ -1097,6 +1430,10 @@ document.querySelectorAll("[data-rps]").forEach((b) => {
   b.addEventListener("click", () => playRps(Number(b.dataset.rps)));
 });
 document.getElementById("btn-spin").addEventListener("click", () => spinWheel());
+document.getElementById("btn-slot")?.addEventListener("click", () => spinSlot());
+document.querySelectorAll("[data-hi]").forEach((b) => {
+  b.addEventListener("click", () => playHilo(b.dataset.hi));
+});
 document.querySelectorAll("[data-odd]").forEach((b) => {
   b.addEventListener("click", () => playOdd(Number(b.dataset.odd)));
 });
