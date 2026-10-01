@@ -1968,6 +1968,7 @@ document.getElementById("btn-slot-spin")?.addEventListener("click", () => spinSl
     if (pulled || tapped) spinSlot();
   };
   lever.addEventListener("pointerup", end);
+  lever.addEventListener("click", () => spinSlot());
   lever.addEventListener("pointercancel", () => {
     active = false;
     lever.style.setProperty("--pull", "0");
