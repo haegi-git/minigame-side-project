@@ -1434,8 +1434,8 @@ function makeJet(z, x, phase = 0, speed = 2.2) {
       const wave = Math.sin(t * speed + phase);
       const on = wave > 0.08;
       const warn = !on && wave > -0.55;
-      const s = on ? 0.45 + Math.abs(Math.sin(t * 18)) * 0.7 : warn ? 0.16 : 0.03;
-      flame.scale.set(s, on ? s : s * 0.35, s);
+      const s = on ? 0.45 + Math.abs(Math.sin(t * 18)) * 0.7 : warn ? 0.42 : 0.08;
+      flame.scale.set(s, on ? s : warn ? 0.55 : 0.2, s);
       core.scale.set(s * 0.75, on ? s : 0.05, s * 0.75);
       flame.material.color.setHex(on ? 0xff5a1f : 0xffb020);
       flame.material.opacity = on ? 0.95 : warn ? 0.55 : 0.08;
@@ -1499,8 +1499,15 @@ function makeDoorPuzzle(z) {
       emissive: s.fake ? 0x000000 : s.color,
       emissiveIntensity: s.fake ? 0 : 0.55,
     });
-    const frame = new THREE.Mesh(new THREE.BoxGeometry(2.7, 2.9, 0.28), frameMat);
-    frame.position.set(s.x, 1.5, 0);
+    const frame = new THREE.Group();
+    frame.position.set(s.x, 0, 0);
+    const postL = new THREE.Mesh(new THREE.BoxGeometry(0.32, 2.9, 0.34), frameMat);
+    postL.position.set(-1.2, 1.45, 0);
+    const postR = new THREE.Mesh(new THREE.BoxGeometry(0.32, 2.9, 0.34), frameMat);
+    postR.position.set(1.2, 1.45, 0);
+    const lintel = new THREE.Mesh(new THREE.BoxGeometry(2.72, 0.32, 0.34), frameMat);
+    lintel.position.set(0, 2.9, 0);
+    frame.add(postL, postR, lintel);
     g.add(frame);
     if (!s.fake) {
       beam = new THREE.Mesh(
