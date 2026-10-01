@@ -166,9 +166,23 @@ button, .back, .mute { touch-action: manipulation; }
   display: block;
   margin-top: 4px;
   font-family: "Jua", sans-serif;
-  font-size: clamp(36px, 6vw, 64px);
+  font-size: clamp(28px, 4.6vw, 52px);
   color: #fffdf8;
   text-shadow: 0 4px 0 #2b2140, 0 0 18px rgba(255, 224, 102, 0.85);
+}
+
+.banner.spell {
+  min-width: min(680px, 92vw);
+  padding: 12px 28px 16px;
+  background:
+    linear-gradient(90deg, rgba(20, 8, 24, 0), rgba(20, 8, 24, 0.55), rgba(20, 8, 24, 0));
+  border-top: 3px solid #ffe066;
+  border-bottom: 3px solid #ffe066;
+}
+
+.banner.spell small {
+  letter-spacing: 0.42em;
+  font-size: 13px;
 }
 
 @keyframes bannerin {
@@ -249,25 +263,14 @@ h2 { font-size: 36px; margin: 4px 0 8px; }
 
 .pick small { display: block; color: var(--muted); line-height: 1.35; margin-top: 2px; }
 
-.swatch {
-  width: 42px;
-  height: 50px;
-  border-radius: 50% 50% 46% 46%;
+.portrait {
+  display: block;
+  width: 100%;
+  height: 168px;
+  border-radius: 14px;
   border: 3px solid var(--ink);
-  position: relative;
+  background: #fff6ea;
 }
-
-.swatch::before, .swatch::after {
-  content: "";
-  position: absolute;
-  width: 5px;
-  height: 7px;
-  background: var(--ink);
-  border-radius: 50%;
-  top: 16px;
-}
-.swatch::before { left: 10px; }
-.swatch::after { right: 10px; }
 
 .controls {
   display: flex;
@@ -358,8 +361,42 @@ body.coarse .touch { display: flex; }
 body.coarse #hint.kb-only { display: none !important; }
 body.coarse .hud .touch-only { display: block; }
 
+body.portrait #game-root {
+  display: flex;
+  flex-direction: column;
+}
+
+body.portrait #view {
+  flex: 1 1 auto;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+}
+
+body.portrait .touch {
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  width: 100%;
+  justify-content: center;
+  gap: 18px;
+  padding: 8px 16px calc(10px + env(safe-area-inset-bottom));
+  background: #160e1c;
+  z-index: 8;
+}
+
+body.portrait .hud {
+  bottom: 78px;
+}
+
+body.coarse #title:not(.hidden) ~ #touch {
+  display: none;
+}
+
 @media (max-width: 760px) {
   .char-row, .stage-row, .stats { grid-template-columns: 1fr; }
+  .portrait { height: 210px; }
   .title-sheet { padding: 16px; }
   h1 { font-size: 40px; }
   .hint { display: none; }
