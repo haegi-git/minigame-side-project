@@ -34,6 +34,7 @@
           <p class="time" id="time">0:00.00</p>
           <p class="speed"><span id="speed">0</span><small>km/h</small></p>
           <p class="best-mini" id="hud-best">최고 --</p>
+          <p class="map-name" id="map-name">콩밭 서킷</p>
         </div>
         <div class="progress-wrap">
           <div id="progress" class="progress"></div>
@@ -57,8 +58,10 @@
           <p class="kicker">심심타임</p>
           <h1>콩트라이더</h1>
           <p class="lead">
-            헤어핀, 뱅크, 터널, 좁은 길, 지름길이 있는 3D 콩밭을 한 바퀴, 약 1분. 핸들은 직접 꺾고, 가드레일은 들이받으면 미끄러지며 속도가 죽습니다. 드리프트로 부스터를 모으고, 아이템으로 라이벌을 따돌리세요.
+            세 코스 중 하나를 고르세요. 핸들은 직접 꺾고, 가드레일은 들이받으면 미끄러지며 속도가 죽습니다. 드리프트로 부스터를 모으고, 아이템으로 라이벌을 따돌리세요.
           </p>
+          <div id="map-list" class="map-list"></div>
+          <p class="map-help kb-only">← → 코스 · Enter 시작</p>
           <ul class="controls">
             <li class="kb-only"><kbd>↑</kbd> <kbd>W</kbd> 가속 · <kbd>↓</kbd> <kbd>S</kbd> 브레이크 / 후진</li>
             <li class="kb-only"><kbd>←</kbd> <kbd>→</kbd> 또는 <kbd>A</kbd> <kbd>D</kbd> 핸들</li>
@@ -71,7 +74,7 @@
             🔥 부스터 · 🚀 삼단부스터 · 🍌 바나나 · 🖤 먹물 · 🛡️ 방패 · 🫘 콩탄 · 🎯 콩대포 · 🧲 자석 · ⚡ 번개
           </p>
           <p class="best-line" id="best-line">아직 최고 기록이 없어요</p>
-          <button id="btn-start" type="button">레이스 시작</button>
+          <button id="btn-start" type="button">이 코스로 시작</button>
         </div>
       </section>
 
@@ -86,6 +89,7 @@
           <ol id="board" class="board"></ol>
           <div class="actions">
             <button id="btn-retry" type="button">한 판 더</button>
+            <button id="btn-maps" type="button" class="ghost">다른 코스</button>
             <a class="ghost" href="../../index.html">로비로</a>
           </div>
         </div>
