@@ -41,7 +41,7 @@
       color: "#7ce7c4",
       blurb: "빠른 광역 수리검. 차지는 관통 폭풍.",
       bombName: "분신 난무",
-      speed: 470,
+      speed: 400,
       rate: 0.09,
       bars: { spd: 5, pow: 2, rng: 5 },
       shot(p, lvl) {
@@ -57,11 +57,13 @@
           const a = (i - (n - 1) / 2) * spread;
           shot(p.x + 18, p.y, a, 860, r, 1, color, "shuriken", lvl >= 3 ? 2 : 1);
         }
+        const core = lvl >= 4 ? 3 : lvl >= 2 ? 2 : 1;
+        shot(p.x + 22, p.y, 0, 920, Math.max(4, r * 0.8), core, "#fff", "shuriken", 2);
       },
       charge(p) {
         for (let i = 0; i < 12; i++) {
           const a = (i - 5.5) * 0.13;
-          shot(p.x + 20, p.y, a, 1080, 8, 6, "#e9fff8", "shuriken", 12);
+          shot(p.x + 20, p.y, a, 1080, 8, 3, "#e9fff8", "shuriken", 4);
         }
       },
       bomb(p) {
@@ -69,7 +71,7 @@
           const x = 90 + k * 150;
           const y = H * (0.22 + (k % 3) * 0.22);
           for (let i = 0; i < 8; i++) {
-            shot(x, y, (i / 8) * Math.PI * 2, 540, 7, 4, "#7ce7c4", "shuriken", 4);
+            shot(x, y, (i / 8) * Math.PI * 2, 540, 7, 2, "#7ce7c4", "shuriken", 2);
           }
         }
       },
@@ -80,8 +82,8 @@
       color: "#ff8fb8",
       blurb: "유도 부적과 도는 태극 구슬.",
       bombName: "도리이 정화",
-      speed: 330,
-      rate: 0.13,
+      speed: 280,
+      rate: 0.108,
       bars: { spd: 3, pow: 3, rng: 4 },
       shot(p, lvl) {
         if (lvl < 1) {
@@ -93,19 +95,19 @@
         const color = lvl >= 4 ? "#fffef6" : "#ffe0ee";
         for (let i = 0; i < n; i++) {
           const a = (i - (n - 1) / 2) * (0.2 + lvl * 0.03);
-          shot(p.x + 16, p.y, a, 400 + lvl * 24, r, 2, color, "ofuda", 1, true);
+          shot(p.x + 16, p.y, a, 400 + lvl * 24, r, 1, color, "ofuda", 1, true);
         }
       },
       charge(p) {
         for (let i = 0; i < 18; i++) {
-          shot(p.x, p.y, (i / 18) * Math.PI * 2, 460, 9, 7, "#fff6c8", "ofuda", 2);
+          shot(p.x, p.y, (i / 18) * Math.PI * 2, 460, 9, 2, "#fff6c8", "ofuda", 1);
         }
-        shot(p.x + 8, p.y, 0, 720, 18, 16, "#fff", "orb", 8);
+        shot(p.x + 8, p.y, 0, 720, 18, 8, "#fff", "orb", 2);
       },
       bomb(p) {
         p.seal = 0.7;
         for (let i = 0; i < 20; i++) {
-          shot(p.x, p.y, (i / 20) * Math.PI * 2, 380, 8, 5, "#fff6c8", "ofuda", 2);
+          shot(p.x, p.y, (i / 20) * Math.PI * 2, 380, 8, 2, "#fff6c8", "ofuda", 1);
         }
       },
     },
@@ -115,7 +117,7 @@
       color: "#ffe066",
       blurb: "느리고 무거운 일직선 참격.",
       bombName: "일섬",
-      speed: 230,
+      speed: 196,
       rate: 0.2,
       bars: { spd: 1, pow: 5, rng: 2 },
       shot(p, lvl) {
@@ -124,14 +126,14 @@
           return;
         }
         const r = 7 + lvl * 2.4;
-        const dmg = 3 + lvl * 2;
+        const dmg = lvl >= 3 ? 4 : 3;
         const color = lvl >= 4 ? "#fffef2" : "#fff3b0";
-        shot(p.x + 26, p.y, 0, 640, r, dmg, color, "slash", 4);
+        shot(p.x + 26, p.y, 0, 780, r, dmg, color, "slash", 2);
         if (lvl >= 2) {
-          shot(p.x + 18, p.y - 6, -0.05, 600, r * 0.72, dmg - 1, "#ffe066", "slash", 3);
-          shot(p.x + 18, p.y + 6, 0.05, 600, r * 0.72, dmg - 1, "#ffe066", "slash", 3);
+          shot(p.x + 18, p.y - 6, -0.05, 740, r * 0.72, 2, "#ffe066", "slash", 2);
+          shot(p.x + 18, p.y + 6, 0.05, 740, r * 0.72, 2, "#ffe066", "slash", 2);
         }
-        if (lvl >= 4) shot(p.x + 30, p.y, 0, 980, 5, 5, "#fff", "knife", 6);
+        if (lvl >= 4) shot(p.x + 30, p.y, 0, 980, 5, 2, "#fff", "knife", 2);
       },
       charge(p) {
         p.slashT = 0.32;
@@ -145,7 +147,7 @@
         }
         for (const e of enemies.all) {
           if (!e.alive || e.phased) continue;
-          if (e.x > p.x - 10 && Math.abs(e.y - p.y) < 140) hurtEnemy(e, 26);
+          if (e.x > p.x - 10 && Math.abs(e.y - p.y) < 140) hurtEnemy(e, 16);
         }
       },
       bomb(p) {
@@ -162,10 +164,11 @@
 
   const view = { s: 1, ox: 0, oy: 0 };
   const keys = new Set();
-  const pointer = { down: false, id: null };
+  const pointer = { down: false, id: null, touch: false, ox: 0, oy: 0, px: 0, py: 0 };
   let focusHeld = false;
   let uidSeq = 1;
   let mode = "title";
+  let simLock = false;
   let charIndex = 0;
   let stageIndex = 0;
   let continues = 2;
@@ -588,6 +591,7 @@
     e.cd4 = opts.cd4 ?? 1.6;
     e.phased = false;
     e.warn = 0;
+    e.guard = 0;
     e.mid = !!opts.mid;
     e.boss = !!opts.boss;
     e.name = opts.name || "";
@@ -627,11 +631,13 @@
 
   function hurtEnemy(e, dmg) {
     if (!e || !e.alive || e.phased) return;
+    if (e.boss && e.guard > 0) return;
     e.hp -= dmg;
     e.flash = 0.07;
     particle(e.x - e.r * 0.2, e.y, -80, (Math.random() - 0.5) * 90, 0.16, "#fff", 3, "spark");
     particle(e.x, e.y, 40 + Math.random() * 80, (Math.random() - 0.5) * 120, 0.14, "#fff6c8", 2.4, "spark");
-    if (e.hp <= 0) killEnemy(e);
+    if (e.boss) bossPhase(e);
+    else if (e.hp <= 0) killEnemy(e);
   }
 
   function showBanner(kicker, title, sec) {
@@ -771,7 +777,7 @@
     const st = stageDef();
     const rad = st.bossBrain === "fortress" ? 86 : st.bossBrain === "guardian" ? 74 : 68;
     boss = spawnEnemy(st.bossBrain, {
-      y: H * 0.5, hp: 980, r: rad, color: st.color, score: 8000,
+      y: H * 0.5, hp: 2600, r: rad, color: st.color, score: 8000,
       boss: true, name: st.boss, intro: 1.7, tx: Math.min(W * 0.72, W - rad - 24),
       look: st.bossBrain,
     });
@@ -785,21 +791,26 @@
   }
 
   function bossPhase(e) {
-    const ratio = e.hp / e.maxHp;
-    const next = ratio > 0.67 ? 1 : ratio > 0.34 ? 2 : 3;
-    if (e.phase !== next) {
-      e.phase = next;
-      e.intro = 0.9;
-      e.cd1 = 0.2;
-      e.cd2 = 0.35;
-      e.cd3 = 0.5;
-      clearEnemyBullets();
-      flash = 0.28;
-      shake = 10;
-      burst(e.x, e.y, e.color, 26, true);
-      showBanner("SPELL CARD", (SPELL[e.brain] || [])[next - 1] || e.name, 1.45);
-      sfx.phase();
+    if (!e || !e.alive) return;
+    const third = e.maxHp / 3;
+    const next = e.hp <= third ? 3 : e.hp <= third * 2 ? 2 : 1;
+    if (next <= e.phase) {
+      if (e.hp <= 0) killEnemy(e);
+      return;
     }
+    const step = e.phase + 1;
+    e.hp = step === 2 ? third * 2 : third;
+    e.phase = step;
+    e.intro = 0.85;
+    e.guard = 0.85;
+    e.cd1 = 0.25;
+    e.cd2 = 0.4;
+    e.cd3 = 0.55;
+    flash = 0.28;
+    shake = 10;
+    burst(e.x, e.y, e.color, 26, true);
+    showBanner("SPELL CARD", (SPELL[e.brain] || [])[step - 1] || e.name, 1.45);
+    sfx.phase();
   }
 
   function patternBoss(e, dt) {
@@ -818,39 +829,39 @@
   function patternGeneral(e, dt) {
     const gapH = Math.max(130, H * 0.2);
     if (e.phase === 1) {
-      e.cd1 -= dt;
+      e.cd1 -= dt * 0.88;
       if (e.cd1 <= 0) {
         e.cd1 = 0.1;
         spiral(e.x - 10, e.y, e.spin, 5, 112, 7, "#ff8fb8", "petal");
       }
-      e.cd2 -= dt;
+      e.cd2 -= dt * 0.88;
       if (e.cd2 <= 0) {
         e.cd2 = 1.35;
         ring(e.x, e.y, 28, 100, 8, "#ffe066", e.spin, 0.55);
       }
-      e.cd3 -= dt;
+      e.cd3 -= dt * 0.88;
       if (e.cd3 <= 0) {
         e.cd3 = 1.7;
         fan(e.x, e.y, 8, 0.14, 168, 6, "#fff", "kunai");
       }
     } else if (e.phase === 2) {
-      e.cd1 -= dt;
+      e.cd1 -= dt * 0.88;
       if (e.cd1 <= 0) {
         e.cd1 = 0.48;
         const gap = H * 0.5 + Math.sin(e.t * 1.15) * H * 0.28;
         curtain(W - 24, gap, gapH, 145, 7, "#ffb7d5", "petal");
       }
-      e.cd2 -= dt;
+      e.cd2 -= dt * 0.88;
       if (e.cd2 <= 0) {
         e.cd2 = 1.15;
         ring(e.x - 20, e.y, 20, 90, 8, "#fff6c8", -e.spin * 0.7, 0.62);
       }
-      e.cd3 -= dt;
+      e.cd3 -= dt * 0.88;
       if (e.cd3 <= 0) {
         e.cd3 = 1.6;
         fan(e.x, e.y, 6, 0.18, 185, 6, "#ffe066", "petal");
       }
-      e.cd4 -= dt;
+      e.cd4 -= dt * 0.88;
       if (e.cd4 <= 0) {
         e.cd4 = 3.6;
         spawnEnemy("rush", {
@@ -858,13 +869,13 @@
         });
       }
     } else {
-      e.cd1 -= dt;
+      e.cd1 -= dt * 0.88;
       if (e.cd1 <= 0) {
         e.cd1 = 0.12;
         spiral(e.x - 24, e.y - 16, e.spin, 3, 125, 7, "#ff8fb8", "petal");
         spiral(e.x - 24, e.y + 16, -e.spin + 0.4, 3, 125, 7, "#d4b3ff", "petal");
       }
-      e.cd2 -= dt;
+      e.cd2 -= dt * 0.88;
       if (e.cd2 <= 0) {
         e.cd2 = 1.05;
         ring(e.x, e.y, 32, 108, 8, "#ffe066", e.spin, 0.5);
@@ -874,53 +885,53 @@
 
   function patternFortress(e, dt) {
     const gapH = Math.max(140, H * 0.2);
-    e.cd4 -= dt;
+    e.cd4 -= dt * 0.88;
     if (e.cd4 <= 0) {
       e.cd4 = e.phase === 3 ? 1.15 : 1.85;
       spawnStrike(player.x + Math.sin(e.t * 1.4) * 36);
     }
     if (e.phase === 1) {
-      e.cd1 -= dt;
+      e.cd1 -= dt * 0.88;
       if (e.cd1 <= 0) {
         e.cd1 = 0.28;
         const gap = H * 0.5 + Math.sin(e.t * 0.85) * H * 0.26;
         curtain(e.x + 30, gap, gapH, 148, 7, "#9be7ff", "kunai");
       }
-      e.cd2 -= dt;
+      e.cd2 -= dt * 0.88;
       if (e.cd2 <= 0) {
         e.cd2 = 1.25;
         fan(e.x - 20, e.y, 9, 0.11, 175, 7, "#fff6c8", "kunai");
       }
-      e.cd3 -= dt;
+      e.cd3 -= dt * 0.88;
       if (e.cd3 <= 0) {
         e.cd3 = 1.6;
         ring(e.x, e.y, 24, 95, 8, "#7ee0ff", e.spin, 0.58);
       }
     } else if (e.phase === 2) {
-      e.cd1 -= dt;
+      e.cd1 -= dt * 0.88;
       if (e.cd1 <= 0) {
         e.cd1 = 0.11;
         spiral(e.x - 30, e.y - 36, e.spin, 3, 128, 7, "#7ee0ff", "orb");
         spiral(e.x - 30, e.y + 36, e.spin + 0.6, 3, 128, 7, "#ffe066", "orb");
       }
-      e.cd2 -= dt;
+      e.cd2 -= dt * 0.88;
       if (e.cd2 <= 0) {
         e.cd2 = 1.35;
         ring(e.x, e.y, 30, 102, 8, "#d7f6ff", -e.spin, 0.5);
       }
     } else {
-      e.cd1 -= dt;
+      e.cd1 -= dt * 0.88;
       if (e.cd1 <= 0) {
         e.cd1 = 0.55;
         const gap = H * 0.5 + Math.sin(e.t * 1.4) * H * 0.24;
         curtain(W - 18, gap, gapH * 0.85, 170, 6, "#fff", "kunai");
       }
-      e.cd2 -= dt;
+      e.cd2 -= dt * 0.88;
       if (e.cd2 <= 0) {
         e.cd2 = 0.7;
         fan(e.x, e.y, 11, 0.1, 160, 7, "#9be7ff", "orb");
       }
-      e.cd3 -= dt;
+      e.cd3 -= dt * 0.88;
       if (e.cd3 <= 0) {
         e.cd3 = 1.5;
         ring(e.x - 10, e.y, 22, 88, 9, "#ffe066", e.t, 0.7);
@@ -930,53 +941,53 @@
 
   function patternGuardian(e, dt) {
     const gapH = Math.max(130, H * 0.2);
-    e.phased = e.phase >= 2 && Math.sin(e.t * 2.1) > 0.62;
+    e.phased = e.phase >= 2 && Math.sin(e.t * 2.1) > 0.93;
     if (e.phase === 1) {
-      e.cd1 -= dt;
+      e.cd1 -= dt * 0.88;
       if (e.cd1 <= 0) {
         e.cd1 = 0.95;
         ring(e.x, e.y, 26, 96, 8, "#e7d4ff", aim(e.x, e.y), 0.62);
         ring(e.x, e.y, 18, 140, 6, "#fff", aim(e.x, e.y) + 0.2, 0.7);
       }
-      e.cd2 -= dt;
+      e.cd2 -= dt * 0.88;
       if (e.cd2 <= 0) {
         e.cd2 = 1.35;
         fan(e.x, e.y, 7, 0.16, 172, 6, "#ffe066", "ofuda");
       }
-      e.cd3 -= dt;
+      e.cd3 -= dt * 0.88;
       if (e.cd3 <= 0) {
         e.cd3 = 0.22;
         spiral(e.x - 8, e.y, e.spin * 0.6, 2, 110, 7, "#fff6c8", "ofuda", 1.7);
       }
     } else if (e.phase === 2) {
-      e.cd1 -= dt;
+      e.cd1 -= dt * 0.88;
       if (e.cd1 <= 0) {
         e.cd1 = 0.13;
         spiral(e.x, e.y, e.spin, 4, 120, 7, "#e7d4ff", "ofuda", -1.5);
       }
-      e.cd2 -= dt;
+      e.cd2 -= dt * 0.88;
       if (e.cd2 <= 0) {
         e.cd2 = 1.2;
         fan(e.x, e.y, 10, 0.12, 168, 6, "#fff6c8", "kunai");
       }
-      e.cd3 -= dt;
+      e.cd3 -= dt * 0.88;
       if (e.cd3 <= 0) {
         e.cd3 = 1.5;
         ring(e.x, e.y, 24, 100, 8, "#ffb7d5", -e.spin, 0.55);
       }
     } else {
-      e.cd1 -= dt;
+      e.cd1 -= dt * 0.88;
       if (e.cd1 <= 0) {
         e.cd1 = 0.5;
         const gap = H * 0.5 + Math.sin(e.t * 1.35) * H * 0.26;
         curtain(W - 20, gap, gapH, 140, 7, "#d4b3ff", "ofuda");
       }
-      e.cd2 -= dt;
+      e.cd2 -= dt * 0.88;
       if (e.cd2 <= 0) {
         e.cd2 = 0.9;
         ring(e.x, e.y, 34, 105, 7, "#fff", e.spin * 1.2, 0.46);
       }
-      e.cd3 -= dt;
+      e.cd3 -= dt * 0.88;
       if (e.cd3 <= 0) {
         e.cd3 = 0.16;
         spiral(e.x - 16, e.y, -e.spin, 3, 115, 6, "#ffe066", "petal");
@@ -989,13 +1000,13 @@
     e.x += (e.tx - e.x) * Math.min(1, dt * 2);
     e.spin += dt;
     if (e.intro > 0) return;
-    e.cd1 -= dt;
+    e.cd1 -= dt * 0.88;
     if (e.brain === "lantern") {
       if (e.cd1 <= 0) {
         e.cd1 = 0.72;
         ring(e.x, e.y, 20, 115, 7, "#ffb15a", e.spin, 0.55);
       }
-      e.cd2 -= dt;
+      e.cd2 -= dt * 0.88;
       if (e.cd2 <= 0) {
         e.cd2 = 1.2;
         fan(e.x, e.y, 7, 0.16, 170, 6, "#ffb7d5", "petal");
@@ -1005,12 +1016,12 @@
         e.cd1 = 0.62;
         curtain(e.x + 16, H * 0.5 + Math.sin(e.t) * H * 0.22, Math.max(140, H * 0.22), 165, 7, "#9be7ff", "kunai");
       }
-      e.cd2 -= dt;
+      e.cd2 -= dt * 0.88;
       if (e.cd2 <= 0) {
         e.cd2 = 1.15;
         fan(e.x, e.y, 6, 0.16, 185, 7, "#ffe066", "kunai");
       }
-      e.cd4 -= dt;
+      e.cd4 -= dt * 0.88;
       if (e.cd4 <= 0) {
         e.cd4 = 2.1;
         spawnStrike(player.x);
@@ -1021,7 +1032,7 @@
         e.cd1 = 0.16;
         spiral(e.x, e.y, e.spin, 3, 125, 6, "#fff6c8", "ofuda", 1.6);
       }
-      e.cd2 -= dt;
+      e.cd2 -= dt * 0.88;
       if (e.cd2 <= 0) {
         e.cd2 = 1.25;
         fan(e.x, e.y, 8, 0.14, 165, 6, "#fff6c8", "ofuda");
@@ -1045,14 +1056,14 @@
     } else if (e.brain === "sine") {
       e.x -= 125 * dt;
       e.y = e.baseY + Math.sin(e.t * 2.5) * 64;
-      e.cd1 -= dt;
+      e.cd1 -= dt * 0.88;
       if (e.cd1 <= 0 && e.x < W - 20) {
         e.cd1 = 0.72;
         fan(e.x, e.y, 5, 0.14, 180, 6, "#fff", "kunai");
       }
     } else if (e.brain === "turret") {
       if (e.x > e.tx) e.x -= 110 * dt;
-      e.cd1 -= dt;
+      e.cd1 -= dt * 0.88;
       if (e.cd1 <= 0 && e.x < W - 10) {
         e.cd1 = 0.78;
         ring(e.x, e.y, 18, 108, 7, e.color, e.t * 0.9, 0.55);
@@ -1060,7 +1071,7 @@
       if (e.t > 11) e.hp = 0;
     } else if (e.brain === "rush") {
       e.x -= 200 * dt;
-      e.cd1 -= dt;
+      e.cd1 -= dt * 0.88;
       if (e.cd1 <= 0) {
         e.cd1 = 99;
         fan(e.x, e.y, 5, 0.2, 190, 6, "#ffb7d5", "petal");
@@ -1068,7 +1079,7 @@
     } else if (e.brain === "kite") {
       e.x -= 95 * dt;
       e.y = e.baseY + Math.sin(e.t * 2.1) * 72;
-      e.cd1 -= dt;
+      e.cd1 -= dt * 0.88;
       if (e.cd1 <= 0 && e.x < W) {
         e.cd1 = 0.95;
         fan(e.x, e.y, 5, 0.22, 150, 6, "#ffb7d5", "petal");
@@ -1076,14 +1087,14 @@
     } else if (e.brain === "cannonship") {
       if (e.x > (e.tx || W * 0.74)) e.x -= 70 * dt;
       e.y = e.baseY + Math.sin(e.t * 1.2) * 18;
-      e.cd1 -= dt;
+      e.cd1 -= dt * 0.88;
       if (e.cd1 <= 0 && e.x < W - 10) {
         e.cd1 = 1.05;
         fan(e.x - 16, e.y, 4, 0.07, 240, 6, "#9be7ff", "kunai");
       }
     } else if (e.brain === "laser") {
       if (e.x > (e.tx || W * 0.76)) e.x -= 80 * dt;
-      e.cd1 -= dt;
+      e.cd1 -= dt * 0.88;
       if (e.cd1 <= 0) {
         e.cd1 = 2.5;
         e.warn = 0.72;
@@ -1099,7 +1110,7 @@
       e.y = e.baseY + Math.sin(e.t * 1.5) * 40;
       e.phased = (Math.floor(e.t / 0.75) % 2) === 1;
       if (!e.phased) {
-        e.cd1 -= dt;
+        e.cd1 -= dt * 0.88;
         if (e.cd1 <= 0 && e.x < W) {
           e.cd1 = 0.9;
           fireE(e.x, e.y, Math.PI, 145, 6, "#e7d4ff", "ofuda", 1.5);
@@ -1109,7 +1120,7 @@
     } else if (e.brain === "lamp") {
       e.x -= 52 * dt;
       e.y = e.baseY + Math.sin(e.t * 3) * 14;
-      e.cd1 -= dt;
+      e.cd1 -= dt * 0.88;
       if (e.cd1 <= 0) {
         ring(e.x, e.y, 16, 125, 6, "#ffb15a", e.t, 0.35);
         ring(e.x, e.y, 10, 78, 5, "#fff6c8", e.t + 1, 0.15);
@@ -1118,7 +1129,7 @@
     } else if (e.brain === "talisman") {
       e.x -= 110 * dt;
       e.y = e.baseY + Math.sin(e.t * 2.4) * 48;
-      e.cd1 -= dt;
+      e.cd1 -= dt * 0.88;
       if (e.cd1 <= 0 && e.x < W - 16) {
         e.cd1 = 0.7;
         fireE(e.x, e.y, Math.PI + 0.2, 160, 6, "#d4b3ff", "ofuda", 1.8);
@@ -1156,7 +1167,7 @@
     for (const e of enemies.all) {
       if (!e.alive) continue;
       e.phased = false;
-      hurtEnemy(e, e.boss ? 150 : e.mid ? 100 : 90);
+      hurtEnemy(e, e.boss ? Math.round(e.maxHp * 0.12) : e.mid ? 100 : 90);
     }
     ch.bomb(player);
     burst(player.x, player.y, player.color, 28, true);
@@ -1465,8 +1476,8 @@
       const ang = player.anim * 3.2 + (i * Math.PI * 2) / n;
       const ox = player.x + Math.cos(ang) * 36;
       const oy = player.y + Math.sin(ang) * 22;
-      if (player.charId === "miko") shot(ox, oy, 0.15 * (i === 0 ? -1 : 1), 390, 5 + player.power * 0.4, 2, "#fff6c8", "ofuda", 1, true);
-      else if (player.charId === "samurai") shot(ox, oy, 0, 700, 7, 3, "#ffe066", "slash", 2);
+      if (player.charId === "miko") shot(ox, oy, 0.15 * (i === 0 ? -1 : 1), 390, 5 + player.power * 0.4, 1, "#fff6c8", "ofuda", 1, true);
+      else if (player.charId === "samurai") shot(ox, oy, 0, 700, 7, 1, "#ffe066", "slash", 1);
       else shot(ox, oy, (i - (n - 1) / 2) * 0.35, 820, 5, 1, "#d9fff4", "shuriken", 1);
     }
   }
@@ -1512,6 +1523,7 @@
       if (!e.alive) continue;
       e.t += dt;
       e.intro = Math.max(0, e.intro - dt);
+      if (e.guard > 0) e.guard = Math.max(0, e.guard - dt);
       e.flash = Math.max(0, e.flash - dt);
       if (e.boss) patternBoss(e, dt);
       else if (e.mid) patternMid(e, dt);
@@ -3252,13 +3264,14 @@
   function frame(ts) {
     const dt = Math.min(0.033, (ts - frame.last) / 1000 || 0);
     frame.last = ts;
-    if (mode === "play") {
+    if (mode === "play" && !simLock) {
       updateDirector(dt);
       updatePlayer(dt);
       updateEnemies(dt);
       updateBullets(dt);
       collide(dt);
       syncHud(false);
+      if (boss && boss.alive) el.bossFill.style.transform = `scaleX(${clamp(boss.hp / boss.maxHp, 0, 1)})`;
     } else if (mode === "title") {
       cam += dt * 24;
       paintPortraits();
@@ -3413,25 +3426,28 @@
   canvas.addEventListener("pointerdown", (e) => {
     if (mode !== "play") return;
     if (e.target !== canvas) return;
+    if (e.pointerType !== "touch") return;
     pointer.down = true;
+    pointer.touch = true;
     pointer.id = e.pointerId;
-    canvas.setPointerCapture(e.pointerId);
+    pointer.ox = e.clientX;
+    pointer.oy = e.clientY;
+    pointer.px = player.x;
+    pointer.py = player.y;
+    try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* synthetic events */ }
     sfx.boot();
-    const p = toWorld(e.clientX, e.clientY);
-    const coarse = document.body.classList.contains("coarse");
-    player.x = clamp(p.x, 28, W * 0.62);
-    player.y = clamp(p.y - (coarse ? 68 : 0), 26, H - 26);
   });
   canvas.addEventListener("pointermove", (e) => {
-    if (!pointer.down || e.pointerId !== pointer.id) return;
-    const p = toWorld(e.clientX, e.clientY);
-    const coarse = document.body.classList.contains("coarse");
-    player.x = clamp(p.x, 28, W * 0.62);
-    player.y = clamp(p.y - (coarse ? 68 : 0), 26, H - 26);
+    if (!pointer.down || !pointer.touch || e.pointerId !== pointer.id) return;
+    const a = toWorld(pointer.ox, pointer.oy);
+    const b = toWorld(e.clientX, e.clientY);
+    player.x = clamp(pointer.px + (b.x - a.x), 28, W * 0.62);
+    player.y = clamp(pointer.py + (b.y - a.y), 26, H - 26);
   });
   function endPointer(e) {
     if (e.pointerId !== pointer.id) return;
     pointer.down = false;
+    pointer.touch = false;
     pointer.id = null;
     if (!keys.has("z") && !keys.has(" ")) releaseCharge();
   }
@@ -3514,6 +3530,66 @@
     director.hold = 0;
   }
 
+  function enemyBulletCount() {
+    let n = 0;
+    for (const b of bullets.all) if (b.alive && b.side === "e") n++;
+    return n;
+  }
+
+  function measureTtk(id, stage, power) {
+    const idx = CHARS.findIndex((c) => c.id === id);
+    startGame(idx < 0 ? 0 : idx, stage, false);
+    wipeFight();
+    director.t = 40;
+    for (const ev of eventsFor(stage)) director.spawned[ev.id] = true;
+    spawnBoss();
+    player.power = power;
+    player.bombs = 0;
+    player.lives = 5;
+    player.x = 220;
+    player.y = H / 2;
+    player.inv = 3;
+    keys.clear();
+    const dt = 1 / 60;
+    let t = 0;
+    let maxFrame = 0;
+    let bulletsAtPhase2 = null;
+    const limit = 130;
+    while (t < limit && boss && boss.alive && mode === "play") {
+      const before = boss.hp;
+      const phaseBefore = boss.phase;
+      keys.clear();
+      keys.add("z");
+      if (boss.y > player.y + 6) keys.add("arrowdown");
+      else if (boss.y < player.y - 6) keys.add("arrowup");
+      if (t > 1.2 && Math.floor(t / 5) !== Math.floor((t - dt) / 5)) keys.delete("z");
+      player.inv = 3;
+      updateDirector(dt);
+      updatePlayer(dt);
+      updateEnemies(dt);
+      updateBullets(dt);
+      collide(dt);
+      player.x = 220;
+      if (boss && boss.alive) {
+        const drop = before - boss.hp;
+        if (drop > maxFrame) maxFrame = drop;
+        if (bulletsAtPhase2 == null && phaseBefore < 2 && boss.phase >= 2) bulletsAtPhase2 = enemyBulletCount();
+      }
+      t += dt;
+    }
+    keys.clear();
+    const dead = !(boss && boss.alive);
+    return {
+      char: id,
+      stage: STAGES[stage].name,
+      power,
+      ttk: dead ? Math.round(t * 10) / 10 : null,
+      maxFrame: Math.round(maxFrame),
+      bulletsAtPhase2,
+      hpLeft: boss && boss.alive ? Math.round(boss.hp) : 0,
+    };
+  }
+
   window.__kongai = {
     start(id, stage) {
       const idx = CHARS.findIndex((c) => c.id === id);
@@ -3558,6 +3634,42 @@
       syncHud(true);
     },
     bomb() { useBomb(); },
+    hp(ratio) {
+      if (!boss || !boss.alive) return null;
+      const r = clamp(Number(ratio), 0, 1);
+      const prev = boss.phase;
+      boss.hp = boss.maxHp * r;
+      boss.phase = r <= 1 / 3 ? 3 : r <= 2 / 3 ? 2 : 1;
+      boss.intro = 0;
+      boss.guard = 0;
+      if (boss.phase !== prev) showBanner("SPELL CARD", (SPELL[boss.brain] || [])[boss.phase - 1] || boss.name, 2.2);
+      syncHud(true);
+      el.bossFill.style.transform = `scaleX(${r})`;
+      return { hp: Math.round(boss.hp), max: boss.maxHp, phase: boss.phase };
+    },
+    ttk() {
+      const keepSound = sfx.enabled;
+      sfx.enabled = false;
+      simLock = true;
+      const prevHi = hi;
+      const rows = [];
+      try {
+        for (const power of [3, 4]) {
+          for (const ch of CHARS) {
+            for (let stage = 0; stage < STAGES.length; stage++) rows.push(measureTtk(ch.id, stage, power));
+          }
+        }
+      } finally {
+        simLock = false;
+        sfx.enabled = keepSound;
+        hi = prevHi;
+        score = 0;
+        try { localStorage.setItem(HI_KEY, String(prevHi)); } catch (err) { /* ignore */ }
+        keys.clear();
+      }
+      console.table(rows);
+      return rows;
+    },
     showcase(stage) {
       const id = stage === 1 ? "ninja" : stage === 2 ? "miko" : "samurai";
       this.start(id, stage || 0);
