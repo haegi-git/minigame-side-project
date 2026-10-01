@@ -1448,27 +1448,86 @@
     g.save();
     g.translate(x, y);
     g.scale(s, s);
-    g.fillStyle = "#162238";
-    g.strokeStyle = "#7ec8e4";
+    g.fillStyle = "#1a2c44";
+    g.strokeStyle = "#9ad8f0";
     g.lineWidth = 3;
-    roundRect(g, -100, -16, 200, 58, 8);
+    g.beginPath();
+    g.moveTo(-150, 6);
+    g.quadraticCurveTo(-118, 34, -40, 30);
+    g.lineTo(78, 26);
+    g.quadraticCurveTo(132, 20, 156, 0);
+    g.lineTo(148, -6);
+    g.quadraticCurveTo(110, -14, 48, -10);
+    g.lineTo(-78, -8);
+    g.quadraticCurveTo(-140, -6, -150, 6);
+    g.closePath();
     g.fill();
     g.stroke();
-    g.fillStyle = "#1d304c";
-    g.fillRect(-78, -62, 26, 50);
-    g.fillRect(36, -78, 30, 66);
-    g.fillRect(-12, -48, 22, 34);
-    kawara(g, -88, -60, 48, 12, 10, "#2a5874");
-    kawara(g, 26, -76, 50, 14, 10, "#2a5874");
-    kawara(g, -22, -46, 42, 10, 8, "#326888");
-    g.fillStyle = "#0c1424";
-    g.fillRect(-132, -6, 38, 9);
-    g.fillRect(-128, 16, 32, 8);
-    g.fillRect(104, 2, 30, 8);
-    g.fillStyle = "#9be7ff";
-    g.globalAlpha = 0.85;
-    [-46, -12, 18, 48].forEach((wx) => g.fillRect(wx, -2, 12, 7));
+    g.strokeStyle = "rgba(180,220,240,0.45)";
+    g.lineWidth = 2;
+    g.beginPath();
+    g.moveTo(-130, 2);
+    g.quadraticCurveTo(-40, 16, 120, -2);
+    g.stroke();
+    g.fillStyle = "#243a58";
+    g.strokeStyle = "#b7e6f6";
+    g.lineWidth = 2;
+    roundRect(g, -18, -36, 78, 30, 5);
+    g.fill();
+    g.stroke();
+    g.fillStyle = "#163044";
+    g.fillRect(8, -58, 16, 26);
+    g.strokeStyle = "#d5e8f4";
+    g.lineWidth = 2;
+    g.beginPath();
+    g.moveTo(16, -34);
+    g.lineTo(16, -86);
+    g.stroke();
+    g.fillStyle = "rgba(214, 236, 246, 0.88)";
+    g.beginPath();
+    g.moveTo(16, -82);
+    g.quadraticCurveTo(62, -68, 58, -40);
+    g.quadraticCurveTo(34, -52, 16, -44);
+    g.closePath();
+    g.fill();
+    g.strokeStyle = "#7ec8e4";
+    g.stroke();
+    g.save();
+    g.translate(-78, -28);
+    g.rotate(cam * 0.18);
+    g.strokeStyle = "#d7f4ff";
+    g.lineWidth = 3;
+    g.lineCap = "round";
+    for (let i = 0; i < 3; i++) {
+      g.rotate((Math.PI * 2) / 3);
+      g.beginPath();
+      g.moveTo(0, 0);
+      g.lineTo(34, 3);
+      g.stroke();
+    }
+    g.fillStyle = "#ffe066";
+    g.beginPath();
+    g.arc(0, 0, 4, 0, Math.PI * 2);
+    g.fill();
+    g.restore();
+    g.fillStyle = "#101820";
+    g.fillRect(138, -4, 26, 7);
+    g.fillStyle = "#ff7a3c";
+    g.beginPath();
+    g.arc(162, -1, 3.5, 0, Math.PI * 2);
+    g.fill();
+    [-96, -48, 8, 52, 96].forEach((lx, i) => {
+      g.fillStyle = i % 2 ? "#9be7ff" : "#ffe066";
+      g.globalAlpha = 0.65 + Math.sin(cam * 0.22 + i) * 0.35;
+      g.beginPath();
+      g.arc(lx, 8, 3.2, 0, Math.PI * 2);
+      g.fill();
+    });
     g.globalAlpha = 1;
+    g.fillStyle = "#8fd4ee";
+    g.fillRect(-8, -28, 10, 6);
+    g.fillRect(18, -28, 10, 6);
+    g.fillRect(40, -28, 10, 6);
     g.restore();
   }
 
@@ -1640,18 +1699,6 @@
         g.ellipse(x + 14, y - 14, 5, 11, 0.5, 0, Math.PI * 2);
         g.fill();
       }
-    } else {
-      const span = W + 280;
-      const x = ((span * 0.2 - cam * 0.85) % span + span) % span - 100;
-      g.globalAlpha = 0.92;
-      toriiGate(g, x, H * 0.98, 1.25);
-      g.globalAlpha = 1;
-      const mist = g.createLinearGradient(0, H * 0.58, 0, H * 0.86);
-      mist.addColorStop(0, "rgba(190,184,220,0)");
-      mist.addColorStop(0.5, "rgba(190,184,220,0.16)");
-      mist.addColorStop(1, "rgba(190,184,220,0)");
-      g.fillStyle = mist;
-      g.fillRect(0, H * 0.5, W, H * 0.4);
     }
   }
 
@@ -2542,28 +2589,39 @@
   frame.last = performance.now();
 
   let lastBox = "";
+  let fieldCss = { x: 0, y: 0, w: 0, h: 0 };
   function resize() {
     const coarse = window.matchMedia("(pointer: coarse)").matches || Math.min(window.innerWidth, window.innerHeight) < 760;
     const portrait = coarse && window.innerHeight > window.innerWidth * 1.05;
     document.body.classList.toggle("coarse", coarse);
     document.body.classList.toggle("portrait", portrait);
+    W = 960;
+    H = 540;
     const r = canvas.getBoundingClientRect();
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = Math.max(2, Math.floor(r.width * dpr));
-    canvas.height = Math.max(2, Math.floor(r.height * dpr));
-    if (portrait && r.width > 2 && r.height > 2) {
-      H = 900;
-      W = Math.max(380, Math.round(H * (r.width / r.height)));
-    } else {
-      W = 960;
-      H = 540;
-    }
+    const bw = Math.max(2, Math.floor(r.width * dpr));
+    const bh = Math.max(2, Math.floor(r.height * dpr));
+    if (canvas.width !== bw) canvas.width = bw;
+    if (canvas.height !== bh) canvas.height = bh;
     const s = Math.min(canvas.width / W, canvas.height / H);
     view.s = s;
     view.ox = (canvas.width - W * s) / 2;
     view.oy = (canvas.height - H * s) / 2;
-    const box = `${Math.round(r.width)}x${Math.round(r.height)}:${W}x${H}`;
-    if (box !== lastBox) {
+    fieldCss = {
+      x: view.ox / dpr,
+      y: view.oy / dpr,
+      w: (W * s) / dpr,
+      h: (H * s) / dpr,
+    };
+    const stage = document.getElementById("stage");
+    if (stage) {
+      stage.style.setProperty("--field-x", fieldCss.x + "px");
+      stage.style.setProperty("--field-y", fieldCss.y + "px");
+      stage.style.setProperty("--field-w", fieldCss.w + "px");
+      stage.style.setProperty("--field-h", fieldCss.h + "px");
+    }
+    const box = `${Math.round(r.width)}x${Math.round(r.height)}`;
+    if (box !== lastBox && r.width > 2 && r.height > 2) {
       lastBox = box;
       for (const a of ambience) {
         a.x = Math.random() * W;
@@ -2806,6 +2864,7 @@
         coarse: document.body.classList.contains("coarse"),
         portrait: document.body.classList.contains("portrait"),
         w: W, h: H,
+        field: fieldCss,
       };
     },
   };
