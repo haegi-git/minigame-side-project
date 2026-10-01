@@ -23,13 +23,13 @@ const WHEEL = [
 const SLOT_TABLE = [
   { id: "miss", w: 600, mult: 0, label: "꽝" },
   { id: "pair", w: 220, mult: 1, label: "페어 환급" },
-  { id: "bean", w: 110, mult: 2, sym: "🫘", label: "콩 3개" },
-  { id: "star", w: 45, mult: 4, sym: "⭐", label: "별 3개" },
-  { id: "heart", w: 18, mult: 8, sym: "💗", label: "하트 3개" },
-  { id: "gem", w: 5, mult: 15, sym: "💎", label: "보석 3개" },
-  { id: "crown", w: 2, mult: 40, sym: "👑", label: "왕관 3개" },
+  { id: "bean", w: 110, mult: 2, sym: "bean", label: "콩 3개" },
+  { id: "star", w: 45, mult: 4, sym: "star", label: "별 3개" },
+  { id: "heart", w: 18, mult: 8, sym: "heart", label: "하트 3개" },
+  { id: "gem", w: 5, mult: 15, sym: "gem", label: "보석 3개" },
+  { id: "crown", w: 2, mult: 40, sym: "crown", label: "왕관 3개" },
 ];
-const SLOT_SYMS = ["🫘", "⭐", "💗", "💎", "👑"];
+const SLOT_SYMS = ["bean", "star", "heart", "gem", "crown"];
 const HILO_RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
 const COARSE = window.matchMedia("(pointer: coarse)").matches || Math.min(innerWidth, innerHeight) < 700;
 
@@ -150,8 +150,16 @@ const sfx = {
   click() {
     this.tone(440, 0.06, "triangle", 0.04);
   },
-  tick() {
-    this.tone(720, 0.04, "square", 0.03);
+  tick(slow = false) {
+    this.tone(slow ? 360 : 720, slow ? 0.07 : 0.04, "square", slow ? 0.045 : 0.03);
+  },
+  lever() {
+    this.tone(150, 0.1, "sawtooth", 0.045);
+    setTimeout(() => this.tone(90, 0.14, "triangle", 0.05), 90);
+  },
+  clack() {
+    this.tone(210, 0.05, "square", 0.05);
+    this.tone(480, 0.08, "triangle", 0.04);
   },
   win() {
     this.tone(523, 0.08);
@@ -201,6 +209,7 @@ let busy = false;
 let roundOver = false;
 let shopTab = "hat";
 let trying = null;
+let boughtFlash = null;
 let history = [];
 let cardState = null;
 let hiloValue = 7;
@@ -318,6 +327,16 @@ function applyLook(bean, eq = shownEq()) {
     if (part) gear.add(part);
   }
   if (inner.userData.bodyMat) inner.userData.bodyMat.color.setHex(outfitTint(eq.outfit));
+}
+
+function animateGear(bean, dt, now) {
+  const gear = bean.userData.inner?.userData.gear;
+  if (!gear) return;
+  gear.traverse((obj) => {
+    if (obj.userData.spin) obj.rotation.y += dt * 8;
+    if (obj.userData.aura) obj.rotation.y += dt * 0.8;
+    if (obj.userData.pet) obj.position.y = 0.05 + Math.sin(now * 0.004 + 1) * 0.07;
+  });
 }
 
 function createBean(color, name, me) {
@@ -582,8 +601,8 @@ function pushHistory(text, win) {
   el.innerHTML = history.map((h) => `<li class="${h.win ? "win" : "lose"}">${h.text}</li>`).join("");
 }
 
-function spawnCoins(n) {
-  const host = document.getElementById("fx");
+function spawnCoins(n, hostId = "fx") {
+  const host = document.getElementById(hostId);
   if (!host) return;
   for (let i = 0; i < n; i++) {
     const c = document.createElement("i");
@@ -690,6 +709,12 @@ function openStall(stall) {
     shopEl.classList.remove("hidden");
     phase = "shop";
     renderShop();
+    ensureShopPreview();
+    syncShopPreview();
+    requestAnimationFrame(() => {
+      resizeShopPreview();
+      syncShopPreview();
+    });
     setNear(null);
     return;
   }
@@ -941,22 +966,212 @@ function slotFaces(row) {
     const a = SLOT_SYMS[Math.floor(Math.random() * 3)];
     let b = SLOT_SYMS[Math.floor(Math.random() * SLOT_SYMS.length)];
     while (b === a) b = SLOT_SYMS[Math.floor(Math.random() * SLOT_SYMS.length)];
-    const faces = [a, a, b];
-    return faces.sort(() => Math.random() - 0.5);
+    return [a, a, b];
   }
   const bag = [...SLOT_SYMS].sort(() => Math.random() - 0.5);
   return bag.slice(0, 3);
 }
 
+const SYM_URL = {};
+
+function symbolUrl(id) {
+  if (!SYM_URL[id]) SYM_URL[id] = drawSymbol(id);
+  return SYM_URL[id];
+}
+
+function starPath(ctx, x, y, r, ir) {
+  ctx.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const rad = i % 2 === 0 ? r : ir;
+    const a = -Math.PI / 2 + (i * Math.PI) / 5;
+    const px = x + Math.cos(a) * rad;
+    const py = y + Math.sin(a) * rad;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+}
+
+function drawSymbol(id) {
+  const c = document.createElement("canvas");
+  c.width = c.height = 160;
+  const g = c.getContext("2d");
+  g.lineJoin = "round";
+  g.lineCap = "round";
+  const ink = "#2b2140";
+  const stroke = () => {
+    g.lineWidth = 8;
+    g.strokeStyle = ink;
+    g.stroke();
+  };
+  if (id === "bean") {
+    const grd = g.createRadialGradient(68, 62, 8, 82, 96, 70);
+    grd.addColorStop(0, "#ffd0e4");
+    grd.addColorStop(1, "#ff5d8f");
+    g.fillStyle = grd;
+    g.beginPath();
+    g.ellipse(80, 88, 42, 52, 0, 0, Math.PI * 2);
+    g.fill();
+    stroke();
+    g.fillStyle = "rgba(255,255,255,0.5)";
+    g.beginPath();
+    g.ellipse(80, 104, 20, 16, 0, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = "#fff";
+    g.beginPath();
+    g.arc(64, 76, 10, 0, Math.PI * 2);
+    g.arc(98, 76, 10, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = ink;
+    g.beginPath();
+    g.arc(66, 78, 5, 0, Math.PI * 2);
+    g.arc(100, 78, 5, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = "rgba(255,120,160,0.5)";
+    g.beginPath();
+    g.ellipse(46, 94, 8, 5, 0, 0, Math.PI * 2);
+    g.ellipse(114, 94, 8, 5, 0, 0, Math.PI * 2);
+    g.fill();
+    g.strokeStyle = ink;
+    g.lineWidth = 5;
+    g.beginPath();
+    g.arc(80, 98, 12, 0.15 * Math.PI, 0.85 * Math.PI);
+    g.stroke();
+  } else if (id === "star") {
+    const grd = g.createLinearGradient(40, 24, 120, 140);
+    grd.addColorStop(0, "#fff6b0");
+    grd.addColorStop(1, "#e0a100");
+    g.fillStyle = grd;
+    starPath(g, 80, 82, 58, 24);
+    g.fill();
+    stroke();
+  } else if (id === "heart") {
+    const grd = g.createRadialGradient(70, 70, 8, 80, 90, 70);
+    grd.addColorStop(0, "#ffb7d5");
+    grd.addColorStop(1, "#ff4d8d");
+    g.fillStyle = grd;
+    g.beginPath();
+    g.moveTo(80, 128);
+    g.bezierCurveTo(18, 92, 16, 46, 54, 42);
+    g.bezierCurveTo(70, 38, 78, 54, 80, 64);
+    g.bezierCurveTo(82, 54, 90, 38, 106, 42);
+    g.bezierCurveTo(144, 46, 142, 92, 80, 128);
+    g.closePath();
+    g.fill();
+    stroke();
+  } else if (id === "gem") {
+    const grd = g.createLinearGradient(40, 30, 120, 140);
+    grd.addColorStop(0, "#e8fbff");
+    grd.addColorStop(0.45, "#7ee0ff");
+    grd.addColorStop(1, "#3d8dff");
+    g.fillStyle = grd;
+    g.beginPath();
+    g.moveTo(80, 22);
+    g.lineTo(132, 64);
+    g.lineTo(80, 142);
+    g.lineTo(28, 64);
+    g.closePath();
+    g.fill();
+    stroke();
+    g.strokeStyle = "rgba(255,255,255,0.85)";
+    g.lineWidth = 4;
+    g.beginPath();
+    g.moveTo(28, 64);
+    g.lineTo(132, 64);
+    g.moveTo(80, 22);
+    g.lineTo(80, 142);
+    g.moveTo(52, 64);
+    g.lineTo(80, 22);
+    g.lineTo(108, 64);
+    g.stroke();
+  } else if (id === "crown") {
+    const grd = g.createLinearGradient(30, 40, 130, 120);
+    grd.addColorStop(0, "#fff6b0");
+    grd.addColorStop(1, "#e0a100");
+    g.fillStyle = grd;
+    g.beginPath();
+    g.moveTo(26, 112);
+    g.lineTo(34, 52);
+    g.lineTo(58, 84);
+    g.lineTo(80, 36);
+    g.lineTo(102, 84);
+    g.lineTo(126, 52);
+    g.lineTo(134, 112);
+    g.closePath();
+    g.fill();
+    stroke();
+    g.fillStyle = "#ff5d8f";
+    for (const x of [58, 80, 102]) {
+      g.beginPath();
+      g.arc(x, 96, 6, 0, Math.PI * 2);
+      g.fill();
+      g.strokeStyle = ink;
+      g.lineWidth = 3;
+      g.stroke();
+    }
+  }
+  return c.toDataURL("image/png");
+}
+
+function reelCell() {
+  const reel = document.querySelector("#stage-slot .reel-window");
+  const h = reel ? reel.clientHeight : 0;
+  return h > 10 ? h : 90;
+}
+
+function symCell(id) {
+  return `<div class="sym"><img alt="" src="${symbolUrl(id)}" draggable="false"></div>`;
+}
+
+function paintReel(reel, ids) {
+  const strip = reel.querySelector(".reel-strip");
+  if (!strip) return;
+  strip.innerHTML = ids.map(symCell).join("");
+  strip.style.transition = "none";
+  strip.style.transform = "translate3d(0,0,0)";
+}
+
 function setupSlot() {
+  const cabinet = document.getElementById("cabinet");
+  cabinet?.classList.remove("win", "jackpot", "tease", "pulling");
+  const idle = ["bean", "star", "heart"];
   for (let i = 0; i < 3; i++) {
     const reel = document.getElementById(`reel-${i}`);
     if (!reel) continue;
-    reel.classList.remove("spinning");
-    reel.innerHTML = `<b>${SLOT_SYMS[i % SLOT_SYMS.length]}</b>`;
+    reel.classList.remove("spinning", "anticipate", "landed");
+    paintReel(reel, [idle[i]]);
   }
   const btn = document.getElementById("btn-slot");
   if (btn) btn.disabled = false;
+}
+
+async function spinOneReel(index, finalSym, duration, anticipate) {
+  const reel = document.getElementById(`reel-${index}`);
+  const strip = reel.querySelector(".reel-strip");
+  const cell = reelCell();
+  const steps = anticipate ? 18 : 9 + index * 3;
+  const ids = [];
+  for (let n = 0; n < steps; n++) ids.push(SLOT_SYMS[Math.floor(Math.random() * SLOT_SYMS.length)]);
+  ids.push(finalSym);
+  strip.innerHTML = ids.map(symCell).join("");
+  strip.style.transition = "none";
+  strip.style.transform = "translate3d(0,0,0)";
+  reel.classList.remove("landed");
+  reel.classList.add("spinning");
+  if (anticipate) reel.classList.add("anticipate");
+  void strip.offsetHeight;
+  const measured = strip.querySelector(".sym")?.getBoundingClientRect().height || cell;
+  const travel = steps * measured;
+  const ease = anticipate ? "cubic-bezier(0.07, 0.78, 0.16, 1.08)" : "cubic-bezier(0.16, 0.72, 0.18, 1.16)";
+  strip.style.transition = `transform ${duration}ms ${ease}`;
+  strip.style.transform = `translate3d(0, ${-travel}px, 0)`;
+  const sharpAt = anticipate ? duration * 0.58 : Math.max(0, duration - 180);
+  await wait(sharpAt);
+  reel.classList.remove("spinning");
+  await wait(duration - sharpAt);
+  reel.classList.remove("anticipate");
+  reel.classList.add("landed");
+  sfx.clack();
 }
 
 async function spinSlot() {
@@ -964,25 +1179,35 @@ async function spinSlot() {
   busy = true;
   const btn = document.getElementById("btn-slot");
   if (btn) btn.disabled = true;
+  const cabinet = document.getElementById("cabinet");
+  cabinet?.classList.remove("win", "jackpot", "tease");
   const row = rollSlot();
   const faces = slotFaces(row);
-  for (let i = 0; i < 3; i++) {
-    const reel = document.getElementById(`reel-${i}`);
-    reel.classList.add("spinning");
-    const spinFor = 700 + i * 480;
-    const started = performance.now();
-    while (performance.now() - started < spinFor) {
-      reel.innerHTML = `<b>${SLOT_SYMS[Math.floor(Math.random() * SLOT_SYMS.length)]}</b>`;
-      if (i === 2 && faces[0] === faces[1] && performance.now() - started > spinFor - 280) {
-        reel.innerHTML = `<b>${faces[0]}</b>`;
-      }
-      sfx.tick();
-      await wait(70 + i * 20);
+  cabinet?.classList.add("pulling");
+  sfx.lever();
+  await wait(260);
+  cabinet?.classList.remove("pulling");
+
+  const anticipate = faces[0] === faces[1];
+  const durations = [920, 1460, anticipate ? 2680 : 1960];
+  let ticking = true;
+  const ticks = (async () => {
+    const start = performance.now();
+    while (ticking && performance.now() - start < durations[2] - 40) {
+      const t = (performance.now() - start) / durations[2];
+      const slow = anticipate && t > 0.52;
+      if (slow) cabinet?.classList.add("tease");
+      sfx.tick(slow);
+      await wait(slow ? 80 + (t - 0.52) * 280 : 54);
     }
-    reel.classList.remove("spinning");
-    reel.innerHTML = `<b>${faces[i]}</b>`;
-    sfx.click();
-    await wait(180);
+  })();
+  await Promise.all([0, 1, 2].map((i) => spinOneReel(i, faces[i], durations[i], i === 2 && anticipate)));
+  ticking = false;
+  await ticks;
+  cabinet?.classList.remove("tease");
+  if (row.mult > 0) {
+    cabinet?.classList.add("win");
+    if (row.mult >= 15) cabinet?.classList.add("jackpot");
   }
   if (row.mult <= 0) payout(0, "그림이 어긋났어요...", false);
   else if (row.mult === 1) payout(1, `페어! 건 돈 ${format(currentBet)}을 돌려받아요`, true);
@@ -1145,6 +1370,144 @@ async function pickLadder(start) {
   else payout(0, "꽝 길이었어요...", false);
 }
 
+const THUMB_POSE = {
+  hat: { yaw: 0.55, z: 3.05, x: 0, lookY: 0.46 },
+  face: { yaw: 0.12, z: 2.75, x: 0, lookY: 0.22 },
+  neck: { yaw: 0.3, z: 2.95, x: 0, lookY: 0.12 },
+  back: { yaw: Math.PI - 0.55, z: 3.35, x: 0, lookY: 0.28 },
+  held: { yaw: -0.7, z: 3.15, x: -0.08, lookY: 0.16 },
+  pet: { yaw: 0.15, z: 3.95, x: -0.42, lookY: 0.2 },
+  aura: { yaw: 0.45, z: 4.2, x: 0, lookY: 0.32 },
+  outfit: { yaw: 0.4, z: 3.25, x: 0, lookY: 0.28 },
+};
+
+const thumbCache = new Map();
+let thumbRig = null;
+let shopView = null;
+
+function hideSprites(root) {
+  root.traverse((obj) => {
+    if (obj.isSprite) obj.visible = false;
+  });
+}
+
+function ensureThumbRig() {
+  if (thumbRig) return thumbRig;
+  const canvas = document.createElement("canvas");
+  const size = COARSE ? 160 : 224;
+  const renderer = new THREE.WebGLRenderer({
+    canvas,
+    alpha: true,
+    antialias: !COARSE,
+    preserveDrawingBuffer: true,
+  });
+  renderer.setPixelRatio(1);
+  renderer.setSize(size, size, false);
+  renderer.setClearColor(0x000000, 0);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  const scene = new THREE.Scene();
+  scene.add(new THREE.HemisphereLight(0xfff6e8, 0x9ad0ff, 1.75));
+  const key = new THREE.DirectionalLight(0xffffff, 1.7);
+  key.position.set(2.4, 4.2, 3.2);
+  scene.add(key);
+  const cam = new THREE.PerspectiveCamera(30, 1, 0.05, 20);
+  const bean = createBean(0xff7eb3, "", false);
+  hideSprites(bean);
+  scene.add(bean);
+  const shadow = new THREE.Mesh(
+    new THREE.CircleGeometry(0.78, 24),
+    new THREE.MeshBasicMaterial({ color: 0x2b2140, transparent: true, opacity: 0.14, depthWrite: false })
+  );
+  shadow.rotation.x = -Math.PI / 2;
+  shadow.position.y = -0.7;
+  scene.add(shadow);
+  thumbRig = { renderer, scene, cam, bean };
+  return thumbRig;
+}
+
+function bakeThumb(item) {
+  if (thumbCache.has(item.id)) return thumbCache.get(item.id);
+  const rig = ensureThumbRig();
+  const eq = emptyEq();
+  eq[item.slot] = item.id;
+  applyLook(rig.bean, eq);
+  const pose = THUMB_POSE[item.slot] || THUMB_POSE.hat;
+  rig.bean.position.x = pose.x;
+  rig.bean.rotation.y = pose.yaw;
+  rig.bean.traverse((obj) => {
+    if (obj.userData.spin) obj.rotation.y = 0.6;
+  });
+  rig.cam.position.set(0.05, 0.82, pose.z);
+  rig.cam.lookAt(pose.x * 0.15, pose.lookY, 0);
+  rig.renderer.render(rig.scene, rig.cam);
+  rig.renderer.render(rig.scene, rig.cam);
+  const url = rig.renderer.domElement.toDataURL("image/png");
+  thumbCache.set(item.id, url);
+  return url;
+}
+
+function ensureShopPreview() {
+  if (shopView || !document.getElementById("shop-preview")) return;
+  const canvas = document.getElementById("shop-preview");
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: !COARSE });
+  renderer.setPixelRatio(COARSE ? 1 : Math.min(devicePixelRatio, 1.5));
+  renderer.setClearColor(0x000000, 0);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  const scene = new THREE.Scene();
+  scene.add(new THREE.HemisphereLight(0xfff1c9, 0x7ecbff, 1.4));
+  const key = new THREE.DirectionalLight(0xffffff, 1.5);
+  key.position.set(2.2, 5, 3.4);
+  scene.add(key);
+  const fill = new THREE.DirectionalLight(0xffd0e6, 0.4);
+  fill.position.set(-3, 2, -1);
+  scene.add(fill);
+  const cam = new THREE.PerspectiveCamera(36, 1, 0.1, 30);
+  cam.position.set(0.2, 1.02, 3.6);
+  cam.lookAt(0, 0.32, 0);
+  const bean = createBean(0xff7eb3, "", false);
+  hideSprites(bean);
+  scene.add(bean);
+  const disc = new THREE.Mesh(
+    new THREE.CircleGeometry(1.05, 32),
+    new THREE.MeshBasicMaterial({ color: 0xff8fb8, transparent: true, opacity: 0.32, depthWrite: false })
+  );
+  disc.rotation.x = -Math.PI / 2;
+  disc.position.y = -0.68;
+  scene.add(disc);
+  shopView = { renderer, scene, cam, bean };
+  resizeShopPreview();
+}
+
+function resizeShopPreview() {
+  if (!shopView) return;
+  const canvas = shopView.renderer.domElement;
+  const w = Math.max(2, canvas.clientWidth);
+  const h = Math.max(2, canvas.clientHeight);
+  shopView.renderer.setSize(w, h, false);
+  shopView.cam.aspect = w / Math.max(1, h);
+  shopView.cam.updateProjectionMatrix();
+}
+
+function syncShopPreview() {
+  if (phase !== "shop") return;
+  ensureShopPreview();
+  if (!shopView) return;
+  applyLook(shopView.bean, shownEq());
+  const cap = document.getElementById("shop-caption");
+  if (!cap) return;
+  if (trying) {
+    const item = ITEMS.find((it) => it.id === trying.id);
+    cap.textContent = item ? `입어보는 중 · ${item.name}` : "입어보는 중";
+    return;
+  }
+  const names = SLOTS.map((slot) => {
+    const id = look.eq[slot];
+    if (!id) return "";
+    return ITEMS.find((it) => it.id === id)?.name || "";
+  }).filter(Boolean);
+  cap.textContent = names.length ? names.join(" · ") : "기본 콩";
+}
+
 function renderShop() {
   const tabs = document.getElementById("shop-tabs");
   const grid = document.getElementById("shop-grid");
@@ -1168,17 +1531,25 @@ function renderShop() {
     const on = look.eq[item.slot] === item.id;
     const preview = trying && trying.id === item.id;
     const el = document.createElement("article");
-    el.className = `shop-item rarity-${item.rarity}${on ? " equipped" : ""}${preview ? " trying" : ""}`;
+    el.dataset.id = item.id;
+    el.className = `shop-item rarity-${item.rarity}${on ? " equipped" : ""}${preview ? " trying" : ""}${boughtFlash === item.id ? " bought" : ""}`;
     const rare = RARITY[item.rarity];
-    el.innerHTML = `<h3>${item.name}</h3><em style="color:${rare.color}">${rare.name}</em><p>${item.blurb} · ${SLOT_LABEL[item.slot]}</p>`;
+    const src = bakeThumb(item);
+    const right = on
+      ? `<span class="badge eq">착용 중</span>`
+      : owned
+        ? `<span class="badge own">보유</span>`
+        : preview
+          ? `<span class="badge tryon">미리보기</span>`
+          : "";
+    const flags = `<span class="badge price">${format(item.price)}</span>${right}`;
+    el.innerHTML = `<div class="shop-art"><img alt="${item.name}" src="${src}"><div class="shop-badges">${flags}</div></div><div class="shop-meta"><h3>${item.name}</h3><em style="color:${rare.color}">${rare.name}</em></div><p>${item.blurb}</p>`;
     const row = document.createElement("div");
     row.className = "row";
-    const price = document.createElement("span");
-    price.textContent = owned ? (on ? "착용 중" : "보유") : `${format(item.price)} 콩알`;
     const btn = document.createElement("button");
     btn.type = "button";
     if (!owned) {
-      btn.textContent = money < item.price ? "콩알 부족" : `구매 ${format(item.price)}`;
+      btn.textContent = money < item.price ? "부족" : "구매";
       btn.disabled = money < item.price;
       btn.addEventListener("click", () => buyItem(item));
       const tryBtn = document.createElement("button");
@@ -1191,20 +1562,22 @@ function renderShop() {
         sfx.click();
         renderShop();
       });
-      row.append(price, tryBtn, btn);
+      row.append(tryBtn, btn);
     } else if (on) {
       btn.textContent = "벗기";
       btn.classList.add("on");
       btn.addEventListener("click", () => wear(item.slot, null));
-      row.append(price, btn);
+      row.append(btn);
     } else {
       btn.textContent = "착용";
       btn.addEventListener("click", () => wear(item.slot, item.id));
-      row.append(price, btn);
+      row.append(btn);
     }
     el.appendChild(row);
     grid.appendChild(el);
   }
+  boughtFlash = null;
+  syncShopPreview();
 }
 
 function buyItem(item) {
@@ -1217,7 +1590,8 @@ function buyItem(item) {
   applyLook(player.mesh);
   updateHud();
   sfx.win();
-  spawnCoins(12);
+  boughtFlash = item.id;
+  spawnCoins(18, "shop-fx");
   shopEl.classList.remove("just-bought");
   void shopEl.offsetWidth;
   shopEl.classList.add("just-bought");
@@ -1310,13 +1684,19 @@ function tick(now) {
   player.mesh.rotation.y = player.yaw;
   player.mesh.userData.inner.position.y = Math.abs(Math.sin(player.bob)) * 0.08;
 
-  const gear = player.mesh.userData.inner.userData.gear;
-  if (gear) {
-    gear.traverse((obj) => {
-      if (obj.userData.spin) obj.rotation.y += dt * 8;
-      if (obj.userData.aura) obj.rotation.y += dt * 0.8;
-      if (obj.userData.pet) obj.position.y = 0.05 + Math.sin(now * 0.004 + 1) * 0.07;
-    });
+  animateGear(player.mesh, dt, now);
+  if (phase === "shop" && shopView) {
+    const canvas = shopView.renderer.domElement;
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    if (w > 2 && h > 2) {
+      const pr = shopView.renderer.getPixelRatio();
+      if (canvas.width !== Math.floor(w * pr) || canvas.height !== Math.floor(h * pr)) resizeShopPreview();
+      shopView.bean.rotation.y += dt * 0.75;
+      shopView.bean.userData.inner.position.y = Math.sin(now * 0.003) * 0.05;
+      animateGear(shopView.bean, dt, now);
+      shopView.renderer.render(shopView.scene, shopView.cam);
+    }
   }
   for (const mote of motes) {
     mote.position.y += Math.sin(now * 0.001 + mote.position.x) * 0.002;
@@ -1356,6 +1736,7 @@ window.addEventListener("resize", () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
+  resizeShopPreview();
 });
 
 function bindStick(root) {

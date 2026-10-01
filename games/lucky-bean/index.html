@@ -121,12 +121,28 @@
           </div>
 
           <div id="stage-slot" class="stage hidden">
-            <div class="reels" id="reels">
-              <div class="reel" id="reel-0"><b>🫘</b></div>
-              <div class="reel" id="reel-1"><b>⭐</b></div>
-              <div class="reel" id="reel-2"><b>💗</b></div>
+            <div class="cabinet" id="cabinet">
+              <div class="marquee">
+                <i class="lamp"></i><i class="lamp"></i><i class="lamp"></i>
+                <b>럭키 슬롯</b>
+                <i class="lamp"></i><i class="lamp"></i><i class="lamp"></i>
+              </div>
+              <div class="cabinet-row">
+                <div class="reel-bay">
+                  <div class="reels" id="reels">
+                    <div class="reel" id="reel-0"><div class="reel-window"><div class="reel-strip"></div></div></div>
+                    <div class="reel" id="reel-1"><div class="reel-window"><div class="reel-strip"></div></div></div>
+                    <div class="reel" id="reel-2"><div class="reel-window"><div class="reel-strip"></div></div></div>
+                  </div>
+                  <div class="winline" id="win-line"></div>
+                </div>
+                <button type="button" id="btn-slot" class="lever" aria-label="레버 당기기">
+                  <span class="lever-arm"></span>
+                  <span class="lever-knob"></span>
+                </button>
+              </div>
+              <p class="jackpot-banner">잭팟!</p>
             </div>
-            <button type="button" id="btn-slot">레버</button>
             <ul class="paytable">
               <li>꽝 60%</li>
               <li>페어 환급 22%</li>
@@ -170,10 +186,21 @@
 
       <section id="shop" class="overlay hidden">
         <div class="panel play-panel shop-panel">
-          <h2>꾸미기 상점</h2>
-          <p class="lead">부위마다 하나만 착용돼요. 입어보기는 사지 않아도 광장의 콩에 잠시 입혀 볼 수 있어요.</p>
-          <div id="shop-tabs" class="shop-tabs"></div>
-          <div id="shop-grid" class="shop-grid"></div>
+          <div id="shop-fx" class="fx" aria-hidden="true"></div>
+          <div class="shop-head">
+            <h2>꾸미기 상점</h2>
+            <p class="lead">미리보기 콩이 지금 입은 모습이에요. 입어보기를 누르면 바로 돌아갑니다.</p>
+          </div>
+          <div class="shop-layout">
+            <aside class="shop-stage">
+              <canvas id="shop-preview"></canvas>
+              <p id="shop-caption">미리보기</p>
+            </aside>
+            <div class="shop-main">
+              <div id="shop-tabs" class="shop-tabs"></div>
+              <div id="shop-grid" class="shop-grid"></div>
+            </div>
+          </div>
           <div class="actions">
             <button id="btn-shop-close" class="ghost" type="button">광장으로</button>
           </div>
