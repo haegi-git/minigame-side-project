@@ -1218,7 +1218,7 @@ function makeDoorPuzzle(z) {
   const g = new THREE.Group();
   g.position.set(0, 0, z);
   const colors = [0xff4d6d, 0xffe066, 0x3dce9a];
-  [-4.6, 0, 4.6].forEach((x, i) => {
+  [-5.6, 0, 5.6].forEach((x, i) => {
     const frame = new THREE.Mesh(
       new THREE.BoxGeometry(2.7, 2.9, 0.28),
       new THREE.MeshStandardMaterial({ color: colors[i], roughness: 0.4, emissive: colors[i], emissiveIntensity: i === 1 ? 0.35 : 0.05 })
@@ -1235,8 +1235,8 @@ function makeDoorPuzzle(z) {
     }
   });
   put(g);
-  addWall(-4.6, 1.35, z, 2.45, 2.7, 0.7);
-  addWall(4.6, 1.35, z, 2.45, 2.7, 0.7);
+  addWall(-6.15, 1.35, z, 2.1, 2.7, 0.7);
+  addWall(6.15, 1.35, z, 2.1, 2.7, 0.7);
   obstacles.push({
     kind: "door",
     z,
@@ -1347,16 +1347,14 @@ function buildCandy() {
   strip(146, 184, 0xffe066, { y: 1.05, w: 12 });
 
   addSpawnPad(180, 194, 0x7ce7c4);
-  strip(198, 236, 0xffb7d5, { x: -4.2, w: 5.6 });
-  makeLowBar(210, false, -4.2, 2.2);
-  makeLowBar(224, true, -4.2, 2.2);
-  strip(198, 214, 0xc9f6e4, { x: 4.2, w: 5.6 });
-  makeBumper(4.2, 206);
-  strip(220, 236, 0xc9f6e4, { x: 4.2, w: 5.6 });
-  makeBumper(4.2, 228);
+  strip(198, 214, 0xffe066);
+  strip(214, 248, 0xffb7d5, { x: -4.2, w: 5.6 });
+  makeLowBar(242, false, -4.2, 2.2);
+  strip(214, 248, 0xc9f6e4, { x: 4.2, w: 5.6 });
+  makeLowBar(244, true, 4.2, 2.2);
 
-  strip(240, 264, 0xffe066);
-  makeDoorPuzzle(252);
+  strip(248, 270, 0xffe066);
+  makeDoorPuzzle(258);
 
   addSpawnPad(264, 274, 0xffb7d5);
   makeHexField(278, 10, 7, [0xff8fb8, 0xffe066, 0x7ce7c4, 0xffb7d5, 0xc4845a, 0xfff3b0]);
@@ -1393,8 +1391,8 @@ function buildLava() {
   makeJet(66, -4.2, 2.1, 1.7);
 
   addSpawnPad(72, 82, 0xffd0a0);
-  strip(82, 94, 0xd4683c, { w: 10 });
-  strip(100.5, 116, 0xffb070, { w: 8 });
+  strip(82, 96, 0xd4683c, { w: 10 });
+  strip(100.6, 118, 0xffb070, { w: 8 });
   makeMill(108, 1.45, 1.1);
 
   let z = 120;
@@ -1456,11 +1454,10 @@ function buildSky() {
   hexBand = null;
   addSpawnPad(-4, 22, 0xe8f7ff);
 
-  iceStrip(22, 68, { w: 12 });
+  iceStrip(22, 68, { w: 14 });
   makeBumper(-3.1, 34);
   makeBumper(3.3, 46);
   makeLowBar(56, false);
-  makeBumper(0, 64);
 
   addSpawnPad(68, 78, 0xf7fbff);
   strip(78, 116, 0xd7eeff, { w: 6.4, rails: false });
@@ -1487,18 +1484,18 @@ function buildSky() {
   winds.push({ z0: 246, z1: 282, ax: -10, gust: 0.85, phase: 1.2 });
 
   addSpawnPad(286, 296, 0xfffdf8);
-  strip(300, 348, 0xd5ecff, { x: -2.4, w: 7.4 });
-  makeLowBar(314, false, -2.4, 3.2);
-  makeLowBar(332, true, -2.4, 3.2);
-  makeFanPad(5.5, 308, 13, 14);
-  strip(312, 348, 0xffffff, { x: 5.5, y: 1.35, w: 4.4, rails: false });
-  makeBumper(5.5, 334);
+  strip(300, 314, 0xd5ecff, { x: -2.4, w: 7.4 });
+  strip(314, 348, 0xd5ecff, { x: -2.4, w: 7.4 });
+  makeLowBar(330, true, -2.4, 3.2);
+  makeFanPad(5.5, 318, 13, 14);
+  strip(326, 348, 0xffffff, { x: 5.5, y: 1.35, w: 4.4, rails: false });
+  makeBumper(5.5, 338);
 
   strip(352, 374, 0xe8f6ff);
   makeMill(362, 1.25, 0.5);
   strip(374, 390, 0xf4fbff, { w: 8 });
   makeSpinBar(382, -1.7, 0.4, true);
-  strip(395.6, 455, 0xe7f4ff);
+  strip(394.4, 455, 0xe7f4ff);
   makeLowBar(406, false);
 
   placeFinish();
@@ -1865,7 +1862,7 @@ function wishDir(r) {
   if (cur && cur.hex && cur.shake > 0.06) {
     tmp.x = THREE.MathUtils.clamp(bestSafeX(r) - r.pos.x, -1, 1);
     tmp.z = 1;
-  } else if (cur && r.onGround && edgeDist > 1.9 && !hexZone) {
+  } else if (cur && r.onGround && edgeDist > 1.9 && !hexZone && !(nxt && Math.abs(nxt.x - cur.x) > 1.6)) {
     tmp.x = THREE.MathUtils.clamp(cur.x - r.pos.x, -1, 1);
   } else if (cur && !cur.moving && r.onGround && !hexZone) {
     const half = Math.max(0.35, cur.w / 2 - 0.55);
@@ -1954,7 +1951,7 @@ function wishDir(r) {
   }
   for (const o of obstacles) {
     const dz = o.z - r.pos.z;
-    if (o.kind === "door" && dz > -0.3 && dz < 8) {
+    if (o.kind === "door" && dz > -0.3 && dz < 12) {
       tmp.x = THREE.MathUtils.clamp(o.openX - r.pos.x, -1, 1);
     }
     if (o.kind === "jet" && dz > 0.15 && dz < 5.2 && o.lit(simTime)) {
@@ -2054,6 +2051,7 @@ function predictedX(p, ahead) {
 }
 
 function nextPlatform(r) {
+  const cur = findSupport(r.pos.x, r.pos.z, r.pos.y);
   const zCut = r.pos.z + 0.45;
   let best = null;
   let bestKey = Infinity;
@@ -2062,6 +2060,15 @@ function nextPlatform(r) {
     if (p.hex && (p.shake > 0.05 || p.mesh.position.y < -0.45)) continue;
     const minZ = p.z - p.d / 2;
     if (minZ <= zCut) continue;
+    if (
+      cur &&
+      !cur.hex &&
+      !p.hex &&
+      minZ < cur.z + cur.d / 2 - 0.35 &&
+      Math.abs(predictedX(p, 0) - cur.x) > Math.max(2.4, cur.w * 0.5)
+    ) {
+      continue;
+    }
     const dx = predictedX(p, 0.7) - r.pos.x;
     const key = minZ * 8 + Math.abs(dx) * 0.2;
     if (key < bestKey) {
@@ -2169,27 +2176,32 @@ function updateRacer(r, dt) {
   r.vel.x += wishX * acc * dt;
   r.vel.z += wishZ * acc * dt;
 
+  const launchBoost = (r.padT || 0) > 0 ? 10 : 0;
+  const cap = maxSpd + launchBoost;
   const hz = Math.hypot(r.vel.x, r.vel.z);
-  if (hz > maxSpd) {
-    r.vel.x = (r.vel.x / hz) * maxSpd;
-    r.vel.z = (r.vel.z / hz) * maxSpd;
+  if (hz > cap) {
+    r.vel.x = (r.vel.x / hz) * cap;
+    r.vel.z = (r.vel.z / hz) * cap;
   }
 
   const icy = r.onGround && r.groundPlat && r.groundPlat.ice;
   if (r.onGround && !r.sliding) {
-    const damp = Math.exp(-(icy ? 2.05 : FRICTION) * dt);
+    const damp = Math.exp(-(icy ? 3.2 : FRICTION) * dt);
     if (wishLen < 0.01) {
       r.vel.x *= damp;
       r.vel.z *= damp;
-    } else if (!icy) {
+    } else if (icy) {
+      r.vel.x *= 0.98;
+      r.vel.z *= 0.994;
+    } else {
       r.vel.x *= 0.92;
       r.vel.z *= 0.92;
     }
   }
   if (r.onGround && r.groundPlat && r.groundPlat.spin) {
     const gnd = r.groundPlat;
-    r.vel.x += -(r.pos.z - gnd.z) * gnd.spin * dt * 5;
-    r.vel.z += (r.pos.x - gnd.x) * gnd.spin * dt * 5;
+    r.vel.x += -(r.pos.z - gnd.z) * gnd.spin * dt * 2.2;
+    r.vel.z += (r.pos.x - gnd.x) * gnd.spin * dt * 2.2;
   }
   const gust = windAccel(r.pos.z);
   if (gust) r.vel.x += gust * dt;
@@ -2304,6 +2316,43 @@ function updateRacer(r, dt) {
     r.sliding = false;
     r.invuln = 0.9;
     r.safePos.set(r.pos.x, r.pos.y, r.pos.z);
+  }
+
+  if (!r.me && moving && !r.finished) {
+    if (!r.stuckMark) r.stuckMark = r.pos.z;
+    r.stuckT = (r.stuckT || 0) + dt;
+    if (r.pos.z > r.stuckMark + 5) {
+      r.stuckMark = r.pos.z;
+      r.stuckT = 0;
+    } else if (r.stuckT > 8) {
+      r.stuckT = 0;
+      r.stuckMark = Math.max(r.stuckMark, r.pos.z);
+      let dest = null;
+      let best = Infinity;
+      for (const p of platforms) {
+        if (p.fallen || (p.hex && (p.shake > 0.2 || p.mesh.position.y < -0.4))) continue;
+        const minZ = p.z - p.d / 2;
+        if (minZ < r.pos.z + 2) continue;
+        if (minZ > r.pos.z + 11) continue;
+        const key = minZ + Math.abs(p.x - r.pos.x) * 0.4;
+        if (key < best) {
+          best = key;
+          dest = p;
+        }
+      }
+      if (dest) {
+        const toZ = dest.z - dest.d / 2 + 0.55;
+        r.pos.set(dest.x, dest.y + 0.7, toZ);
+        for (let si = 0; si < zoneSpawns.length; si++) {
+          if (zoneSpawns[si].z <= toZ) r.spawnIndex = Math.max(r.spawnIndex, si);
+        }
+        r.vel.set(0, 0, 8);
+        r.onGround = true;
+        r.groundPlat = dest;
+        r.sliding = false;
+        r.stuckMark = toZ;
+      }
+    }
   }
 
   if (moving && r.pos.z >= FINISH_Z && r.pos.y > 0) {
@@ -2632,8 +2681,16 @@ function tick(now) {
       p.mesh.position.y = -p.thick / 2 + Math.sin(now * 0.04) * 0.06;
     }
     if (p.fallen) {
+      p.fallT = (p.fallT || 0) + dt;
       p.fallV = (p.fallV || 0) + 28 * dt;
       p.mesh.position.y -= p.fallV * dt;
+      if (p.fallT > 3.4) {
+        p.fallen = false;
+        p.shake = 0;
+        p.fallV = 0;
+        p.fallT = 0;
+        p.mesh.position.y = -p.thick / 2;
+      }
     }
     if (p.blades) p.blades.rotation.y = now * 0.006;
     if (p.stripe) p.stripe.rotation.y = now * 0.003;
@@ -2975,6 +3032,9 @@ function resetRacers() {
     r.spawnIndex = 0;
     r.failX = null;
     r.groundPlat = null;
+    r.markZ = 0;
+    r.stuckMark = 0;
+    r.stuckT = 0;
     r.checkpoint.set(r.pos.x, 0.66, r.pos.z);
     r.safePos.copy(r.pos);
     r.anim = freshAnim();
