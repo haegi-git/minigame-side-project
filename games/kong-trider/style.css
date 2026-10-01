@@ -221,7 +221,7 @@ button,
 }
 
 .panel {
-  width: min(520px, calc(100% - 8px));
+  width: min(560px, calc(100% - 8px));
   max-height: calc(100dvh - 24px);
   overflow: auto;
   background: #fffdf8;
@@ -244,9 +244,77 @@ button,
 }
 
 .panel h1 {
-  font-size: clamp(40px, 8vw, 56px);
+  font-size: clamp(36px, 7vw, 52px);
   line-height: 1;
   margin: 4px 0 8px;
+}
+
+.map-list {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0 8px;
+  text-align: left;
+}
+
+.map-card {
+  display: grid;
+  grid-template-columns: 132px 1fr;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 8px;
+  background: #fff;
+  box-shadow: 3px 3px 0 var(--ink);
+  text-align: left;
+}
+
+.map-card.on {
+  background: #fff6c8;
+  outline: 3px solid var(--pink);
+}
+
+.map-preview {
+  width: 132px;
+  height: 72px;
+  border-radius: 10px;
+  border: 2px solid var(--ink);
+  display: block;
+}
+
+.map-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.map-copy b {
+  font-family: "Jua", sans-serif;
+  font-size: 18px;
+}
+
+.map-copy em {
+  font-style: normal;
+  font-family: "Jua", sans-serif;
+  font-size: 13px;
+  color: #ff4f93;
+}
+
+.map-copy small {
+  color: #6d5a7a;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.map-help {
+  font-size: 13px;
+  color: #6d5a7a;
+  margin-bottom: 6px;
+}
+
+.map-name {
+  font-family: "Jua", sans-serif;
+  font-size: 14px;
+  color: #6d5a7a;
 }
 
 .panel h2 {

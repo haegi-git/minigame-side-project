@@ -126,6 +126,8 @@ renderer.setPixelRatio(pixelRatio);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xb7dcff);
 scene.fog = new THREE.Fog(0xc5e7ff, liteScene ? 55 : 70, liteScene ? 190 : 250);
+const world = new THREE.Group();
+scene.add(world);
 
 const camera = new THREE.PerspectiveCamera(70, 1, 0.12, 520);
 scene.add(camera);
@@ -211,7 +213,7 @@ function canvasTex(w, h, draw) {
 
 function roadTexture() {
   const tex = canvasTex(256, 256, (g) => {
-    g.fillStyle = "#6d6584";
+    g.fillStyle = activeMap.road;
     g.fillRect(0, 0, 256, 256);
     for (let i = 0; i < 1600; i++) {
       g.fillStyle = Math.random() > 0.5 ? "rgba(255,255,255,0.045)" : "rgba(0,0,0,0.07)";
@@ -219,15 +221,15 @@ function roadTexture() {
     }
     for (let y = 0; y < 256; y += 32) {
       const alt = (y / 32) % 2 === 0;
-      g.fillStyle = alt ? "#ff8fb8" : "#fffdf8";
+      g.fillStyle = alt ? activeMap.edgeA : "#fffdf8";
       g.fillRect(0, y, 22, 32);
-      g.fillStyle = alt ? "#ffe066" : "#fffdf8";
+      g.fillStyle = alt ? activeMap.edgeB : "#fffdf8";
       g.fillRect(234, y, 22, 32);
     }
     g.fillStyle = "#fffdf8";
     g.fillRect(26, 0, 5, 256);
     g.fillRect(225, 0, 5, 256);
-    g.fillStyle = "rgba(255,246,200,0.92)";
+    g.fillStyle = activeMap.lane;
     for (let y = 8; y < 256; y += 44) g.fillRect(122, y, 12, 20);
   });
   tex.wrapS = THREE.RepeatWrapping;
@@ -237,10 +239,10 @@ function roadTexture() {
 
 function grassTexture() {
   const tex = canvasTex(128, 128, (g) => {
-    g.fillStyle = "#7dce86";
+    g.fillStyle = activeMap.grass[0];
     g.fillRect(0, 0, 128, 128);
     for (let i = 0; i < 500; i++) {
-      g.fillStyle = Math.random() > 0.5 ? "#8fe09a" : "#63b96f";
+      g.fillStyle = Math.random() > 0.5 ? activeMap.grass[1] : activeMap.grass[2];
       g.fillRect(Math.random() * 128, Math.random() * 128, 3, 3);
     }
   });
@@ -274,16 +276,20 @@ function softTex() {
   });
 }
 
+function bestStorageKey() {
+  if (!activeMap || activeMap.id === "farm") return BEST_KEY;
+  return `${BEST_KEY}-${activeMap.id}`;
+}
 function storageGet() {
   try {
-    return localStorage.getItem(BEST_KEY);
+    return localStorage.getItem(bestStorageKey());
   } catch {
     return null;
   }
 }
 function storageSet(v) {
   try {
-    localStorage.setItem(BEST_KEY, v);
+    localStorage.setItem(bestStorageKey(), v);
   } catch {
     /* ignore */
   }
@@ -294,41 +300,9 @@ function smooth01(t) {
   return x * x * (3 - 2 * x);
 }
 
-function courseCommands() {
-  return [
-    ["f", 78, 0, "start"],
-    ["t", -26, 18, "chicane"],
-    ["t", 54, 16, "chicane"],
-    ["t", -28, 18, "chicane"],
-    ["f", 58, 0, "toHair"],
-    ["t", 170, 17, "hairL"],
-    ["f", 30, 0, "hairMid"],
-    ["t", -80, 24, "hairExit"],
-    ["f", 120, 0, "climb"],
-    ["t", 90, 18, "kink"],
-    ["f", 46, 0, "preSpur"],
-    ["t", -170, 20, "hairpin"],
-    ["f", 18, 0, "pinStraight"],
-    ["t", 170, 20, "hairpinBack"],
-    ["f", 22, 0, "postSpur"],
-    ["f", 100, 0, "side"],
-    ["t", 22, 24, "esses"],
-    ["t", -44, 22, "esses"],
-    ["t", 22, 24, "esses"],
-    ["t", 100, 58, "bank"],
-    ["f", 72, 0, "tunnel"],
-    ["t", 30, 20, "wiggle"],
-    ["t", -60, 18, "wiggle"],
-    ["t", 30, 20, "wiggle"],
-    ["f", 93.8, 0, "narrow"],
-    ["t", 80, 18, "tight"],
-    ["f", 93.25, 0, "bridge"],
-  ];
-}
+let activeMap = null;
 
-function heightAt(s) {
-  const m = courseMarks.find((mk) => s >= mk.s0 && s < mk.s1) || courseMarks[courseMarks.length - 1];
-  const u = m.s1 > m.s0 ? (s - m.s0) / (m.s1 - m.s0) : 0;
+function farmHeight(m, u) {
   if (m.tag === "climb") return 0.4 + 7.8 * smooth01(u);
   if (m.tag === "kink") return 8.2 + (2.2 - 8.2) * smooth01(u);
   if (m.tag === "preSpur") return 2.2 + (1.4 - 2.2) * u;
@@ -341,6 +315,209 @@ function heightAt(s) {
     return 7.2 + (0.4 - 7.2) * smooth01((u - 0.58) / 0.42);
   }
   return 0.4;
+}
+
+function lerpH(a, b, u) {
+  return a + (b - a) * u;
+}
+
+function neonHeight(m, u) {
+  if (m.tag === "rise") return lerpH(0.4, 4.2, smooth01(u));
+  if (m.tag === "climb") return lerpH(4.2, 8.4, u);
+  if (m.tag === "drop") return lerpH(8.4, 2.5, smooth01(u));
+  if (m.tag === "kink" || m.tag === "kinkOut") return 2.5;
+  if (m.tag === "side") return lerpH(2.5, 3.1, u);
+  if (m.tag === "bank") return 3.1 + 0.7 * Math.sin(Math.min(1, u) * Math.PI);
+  if (m.tag === "tunnel") return lerpH(3.1, 0.7, smooth01(u));
+  if (m.tag === "esses" || m.tag === "narrow") return 0.7;
+  if (m.tag === "tight") return lerpH(0.7, 0.5, u);
+  if (m.tag === "bridge") return lerpH(0.5, 0.4, smooth01(u));
+  return 0.4;
+}
+
+function snowHeight(m, u) {
+  if (m.tag === "start") return 0.45;
+  if (m.tag === "toHair") return lerpH(0.45, 2.4, smooth01(u));
+  if (m.tag === "approach") return lerpH(2.4, 3.6, u);
+  if (m.tag === "hairL") return lerpH(3.6, 6.4, smooth01(u));
+  if (m.tag === "hairMid") return lerpH(6.4, 7.1, u);
+  if (m.tag === "hairExit") return lerpH(7.1, 7.6, u);
+  if (m.tag === "climb") return lerpH(7.6, 12.6, u);
+  if (m.tag === "drop") return lerpH(12.6, 6.4, smooth01(u));
+  if (m.tag === "kink") return 6.4;
+  if (m.tag === "preSpur") return lerpH(6.4, 5.7, u);
+  if (m.tag === "hairpin" || m.tag === "pinStraight" || m.tag === "hairpinBack") return 5.7;
+  if (m.tag === "postSpur") return lerpH(5.7, 4.1, u);
+  if (m.tag === "bank") return lerpH(4.1, 2.3, smooth01(u));
+  if (m.tag === "side") return lerpH(2.3, 1.35, u);
+  if (m.tag === "wiggle") return 1.35;
+  if (m.tag === "tunnel") return lerpH(1.35, 0.9, u);
+  if (m.tag === "tight") return lerpH(0.9, 0.7, u);
+  if (m.tag === "ledge") return 0.7;
+  if (m.tag === "return") return lerpH(0.7, 0.55, u);
+  if (m.tag === "bridge") return lerpH(0.55, 0.45, smooth01(u));
+  return 0.45;
+}
+
+const MAPS = [
+  {
+    id: "farm",
+    name: "콩밭 서킷",
+    difficulty: "보통",
+    blurb: "헤어핀, 뱅크, 터널, 좁은 길, 지름길이 이어진 콩밭. 익숙한 한 바퀴.",
+    commands: [
+      ["f", 78, 0, "start"],
+      ["t", -26, 18, "chicane"],
+      ["t", 54, 16, "chicane"],
+      ["t", -28, 18, "chicane"],
+      ["f", 58, 0, "toHair"],
+      ["t", 170, 17, "hairL"],
+      ["f", 30, 0, "hairMid"],
+      ["t", -80, 24, "hairExit"],
+      ["f", 120, 0, "climb"],
+      ["t", 90, 18, "kink"],
+      ["f", 46, 0, "preSpur"],
+      ["t", -170, 20, "hairpin"],
+      ["f", 18, 0, "pinStraight"],
+      ["t", 170, 20, "hairpinBack"],
+      ["f", 22, 0, "postSpur"],
+      ["f", 100, 0, "side"],
+      ["t", 22, 24, "esses"],
+      ["t", -44, 22, "esses"],
+      ["t", 22, 24, "esses"],
+      ["t", 100, 58, "bank"],
+      ["f", 72, 0, "tunnel"],
+      ["t", 30, 20, "wiggle"],
+      ["t", -60, 18, "wiggle"],
+      ["t", 30, 20, "wiggle"],
+      ["f", 93.8, 0, "narrow"],
+      ["t", 80, 18, "tight"],
+      ["f", 93.25, 0, "bridge"],
+    ],
+    height: farmHeight,
+    rows: [22, 68, 128, 165, 230, 275, 330, 375, 448, 500, 590, 650, 710, 755, 800, 900, 970, 1035, 1088, 1144],
+    sky: ["#6eb6ff", "#b9e0ff", "#d9f0ff", "#ffe7c2"],
+    background: 0xb7dcff,
+    fog: 0xc5e7ff,
+    hemiSky: 0xd7ecff,
+    hemiGround: 0x9dcc7a,
+    sunColor: 0xfff3dd,
+    exposure: 1.06,
+    ground: 0x8ed18d,
+    grass: ["#7dce86", "#8fe09a", "#63b96f"],
+    road: "#6d6584",
+    edgeA: "#ff8fb8",
+    edgeB: "#ffe066",
+    lane: "rgba(255,246,200,0.92)",
+    preview: ["#b7e38a", "#ff8fb8", "#ffe066"],
+  },
+  {
+    id: "neon",
+    name: "네온 야시장",
+    difficulty: "어려움",
+    blurb: "밤거리 고가와 헤어핀, 터널, 뱅크 지름길. 긴 직선에서 부스터를 아끼지 말 것.",
+    commands: [
+      ["f", 100, 0, "start"],
+      ["t", -26, 16, "chicane"],
+      ["t", 52, 14, "chicane"],
+      ["t", -26, 16, "chicane"],
+      ["f", 80, 0, "avenue"],
+      ["t", 90, 20, "plaza"],
+      ["f", 86.82, 0, "block"],
+      ["t", -150, 17, "hairpin"],
+      ["f", 16, 0, "pinStraight"],
+      ["t", 150, 17, "hairpinBack"],
+      ["f", 60, 0, "postSpur"],
+      ["t", 90, 22, "rise"],
+      ["f", 88, 0, "climb"],
+      ["f", 32, 0, "drop"],
+      ["t", -30, 16, "kink"],
+      ["t", 30, 16, "kinkOut"],
+      ["f", 211.75, 0, "side"],
+      ["t", 90, 36, "bank"],
+      ["f", 70, 0, "tunnel"],
+      ["t", -18, 20, "esses"],
+      ["t", 36, 16, "esses"],
+      ["t", -18, 20, "esses"],
+      ["f", 50, 0, "narrow"],
+      ["t", 90, 18, "tight"],
+      ["f", 90, 0, "bridge"],
+    ],
+    height: neonHeight,
+    sky: ["#14081c", "#3a1468", "#6a247a", "#ff5fa2"],
+    background: 0x14081c,
+    fog: 0x2a1244,
+    hemiSky: 0x9a7cff,
+    hemiGround: 0x1a1030,
+    sunColor: 0xffb0e0,
+    exposure: 1.18,
+    ground: 0x161028,
+    grass: ["#24163f", "#3a2066", "#101828"],
+    road: "#2c354c",
+    edgeA: "#ff4fbf",
+    edgeB: "#3de1ff",
+    lane: "rgba(61,225,255,0.85)",
+    preview: ["#2a1458", "#ff4fbf", "#3de1ff"],
+  },
+  {
+    id: "snow",
+    name: "눈밭 고개",
+    difficulty: "어려움",
+    blurb: "스위치백으로 오르는 설산. 점프 뒤 능선 헤어핀, 얼음 터널, 뱅크 지름길.",
+    commands: [
+      ["f", 80, 0, "start"],
+      ["t", 80, 22, "toHair"],
+      ["f", 36, 0, "approach"],
+      ["t", 140, 16, "hairL"],
+      ["f", 22, 0, "hairMid"],
+      ["t", -50, 20, "hairExit"],
+      ["f", 198.89, 0, "climb"],
+      ["f", 32, 0, "drop"],
+      ["t", -100, 15, "kink"],
+      ["f", 30, 0, "preSpur"],
+      ["t", 160, 18, "hairpin"],
+      ["f", 115.68, 0, "pinStraight"],
+      ["t", -160, 18, "hairpinBack"],
+      ["f", 40, 0, "postSpur"],
+      ["t", -90, 40, "bank"],
+      ["f", 70, 0, "side"],
+      ["t", 24, 18, "wiggle"],
+      ["t", -48, 16, "wiggle"],
+      ["t", 24, 18, "wiggle"],
+      ["f", 60, 0, "tunnel"],
+      ["t", -80, 18, "tight"],
+      ["f", 50, 0, "ledge"],
+      ["t", 100, 20, "return"],
+      ["f", 80, 0, "bridge"],
+    ],
+    height: snowHeight,
+    sky: ["#c5e4ff", "#f7fbff", "#ffffff", "#ffe4f1"],
+    background: 0xe7f3ff,
+    fog: 0xf4f9ff,
+    hemiSky: 0xffffff,
+    hemiGround: 0xc5d4e6,
+    sunColor: 0xfff7ee,
+    exposure: 1.08,
+    ground: 0xf7fbff,
+    grass: ["#f4f8fc", "#d5e4f2", "#c3d3e4"],
+    road: "#8b9aaf",
+    edgeA: "#7ce7c4",
+    edgeB: "#fffdf8",
+    lane: "rgba(255,253,248,0.9)",
+    preview: ["#e7f3ff", "#7ce7c4", "#fffdf8"],
+  },
+];
+
+activeMap = MAPS[0];
+
+function courseCommands() {
+  return activeMap.commands;
+}
+
+function heightAt(s) {
+  const m = courseMarks.find((mk) => s >= mk.s0 && s < mk.s1) || courseMarks[courseMarks.length - 1];
+  const u = m.s1 > m.s0 ? (s - m.s0) / (m.s1 - m.s0) : 0;
+  return activeMap.height(m, u);
 }
 
 function coursePoints() {
@@ -556,7 +733,7 @@ function buildRoad() {
     new THREE.MeshLambertMaterial({ map: grassTexture(), side: THREE.DoubleSide })
   );
   shoulder.receiveShadow = shadowsOn;
-  scene.add(shoulder);
+  world.add(shoulder);
 
   const road = new THREE.Mesh(
     ribbonGeometry(0, 0),
@@ -571,26 +748,27 @@ function buildRoad() {
     })
   );
   road.receiveShadow = shadowsOn;
-  scene.add(road);
+  world.add(road);
 
   const ground = new THREE.Mesh(
     new THREE.CircleGeometry(520, liteScene ? 24 : 40),
-    new THREE.MeshLambertMaterial({ color: 0x8ed18d })
+    new THREE.MeshLambertMaterial({ color: activeMap.ground })
   );
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.55;
   ground.receiveShadow = shadowsOn;
-  scene.add(ground);
+  world.add(ground);
 
   const sky = new THREE.Mesh(
     new THREE.SphereGeometry(400, 18, 12),
     new THREE.MeshBasicMaterial({
       map: canvasTex(8, 256, (g) => {
         const grd = g.createLinearGradient(0, 0, 0, 256);
-        grd.addColorStop(0, "#6eb6ff");
-        grd.addColorStop(0.45, "#b9e0ff");
-        grd.addColorStop(0.78, "#d9f0ff");
-        grd.addColorStop(1, "#ffe7c2");
+        const sky = activeMap.sky;
+        grd.addColorStop(0, sky[0]);
+        grd.addColorStop(0.45, sky[1]);
+        grd.addColorStop(0.78, sky[2]);
+        grd.addColorStop(1, sky[3]);
         g.fillStyle = grd;
         g.fillRect(0, 0, 8, 256);
       }),
@@ -599,7 +777,7 @@ function buildRoad() {
       fog: false,
     })
   );
-  if (!liteScene) scene.add(sky);
+  if (!liteScene) world.add(sky);
 }
 
 function addInstances(geo, material, count, place) {
@@ -612,7 +790,7 @@ function addInstances(geo, material, count, place) {
   if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   mesh.frustumCulled = false;
   if (shadowsOn && material.userData.cast) mesh.castShadow = true;
-  scene.add(mesh);
+  world.add(mesh);
   return mesh;
 }
 
@@ -639,7 +817,9 @@ function buildBarriers() {
     _dummy.scale.set(1, 1, 1);
     _dummy.updateMatrix();
     mesh.setMatrixAt(i, _dummy.matrix);
-    _col.set(i % 4 === 0 ? 0xffe066 : i % 2 === 0 ? 0xff8fb8 : 0xfffdf8);
+    if (activeMap.id === "neon") _col.set(i % 2 === 0 ? 0xff4fbf : 0x3de1ff);
+    else if (activeMap.id === "snow") _col.set(i % 2 === 0 ? 0xfffdf8 : 0x7ce7c4);
+    else _col.set(i % 4 === 0 ? 0xffe066 : i % 2 === 0 ? 0xff8fb8 : 0xfffdf8);
     mesh.setColorAt(i, _col);
   });
   const railMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
@@ -658,7 +838,9 @@ function buildBarriers() {
     _dummy.scale.set(1, 1, seg);
     _dummy.updateMatrix();
     mesh.setMatrixAt(i, _dummy.matrix);
-    _col.set(side < 0 ? 0xff8fb8 : 0xffe066);
+    if (activeMap.id === "neon") _col.set(side < 0 ? 0xff4fbf : 0x3de1ff);
+    else if (activeMap.id === "snow") _col.set(side < 0 ? 0xe7f4ff : 0x7ce7c4);
+    else _col.set(side < 0 ? 0xff8fb8 : 0xffe066);
     mesh.setColorAt(i, _col);
   });
 
@@ -723,7 +905,9 @@ function buildScenery() {
     _dummy.scale.set(t.lolli ? 0.55 : 1, h, t.lolli ? 0.55 : 1);
     _dummy.updateMatrix();
     mesh.setMatrixAt(i, _dummy.matrix);
-    _col.set(t.lolli ? 0xfffdf8 : 0x8a5a3a);
+    if (activeMap.id === "neon") _col.set(t.lolli ? 0xff4fbf : 0x2a2040);
+    else if (activeMap.id === "snow") _col.set(0x6d543c);
+    else _col.set(t.lolli ? 0xfffdf8 : 0x8a5a3a);
     mesh.setColorAt(i, _col);
   });
   addInstances(new THREE.SphereGeometry(1, 7, 6), leafMat, treeSpots.length, (i, mesh) => {
@@ -735,7 +919,9 @@ function buildScenery() {
     _dummy.scale.set(sc, t.lolli ? sc * 0.85 : sc * 0.8, sc);
     _dummy.updateMatrix();
     mesh.setMatrixAt(i, _dummy.matrix);
-    if (t.lolli) _col.set(t.hue < 0.33 ? 0xff8fb8 : t.hue < 0.66 ? 0xffe066 : 0x7ce7c4);
+    if (activeMap.id === "neon") _col.set(t.hue < 0.33 ? 0xff4fbf : t.hue < 0.66 ? 0x3de1ff : 0xb388ff);
+    else if (activeMap.id === "snow") _col.set(t.hue < 0.5 ? 0x2f6b45 : 0x3e8f5a);
+    else if (t.lolli) _col.set(t.hue < 0.33 ? 0xff8fb8 : t.hue < 0.66 ? 0xffe066 : 0x7ce7c4);
     else _col.set(t.hue < 0.5 ? 0x3cb86a : 0x7dce55);
     mesh.setColorAt(i, _col);
   });
@@ -760,7 +946,9 @@ function buildScenery() {
     _dummy.scale.set(1, 0.55, 1);
     _dummy.updateMatrix();
     mesh.setMatrixAt(i, _dummy.matrix);
-    _col.set(t.c === 0 ? 0xff8fb8 : t.c === 1 ? 0xffe066 : 0xfffdf8);
+    if (activeMap.id === "neon") _col.set(t.c === 0 ? 0xff4fbf : t.c === 1 ? 0x3de1ff : 0xb388ff);
+    else if (activeMap.id === "snow") _col.set(t.c === 0 ? 0xfffdf8 : t.c === 1 ? 0xd5e8f6 : 0x7ce7c4);
+    else _col.set(t.c === 0 ? 0xff8fb8 : t.c === 1 ? 0xffe066 : 0xfffdf8);
     mesh.setColorAt(i, _col);
   });
 
@@ -796,6 +984,7 @@ function buildScenery() {
     mesh.setMatrixAt(i, _dummy.matrix);
   });
 
+  if (activeMap.id === "farm") {
   const barnMat = new THREE.MeshStandardMaterial({ color: 0xff8fb8, roughness: 0.7, flatShading: true });
   const roofMat = new THREE.MeshStandardMaterial({ color: 0xffe066, roughness: 0.55, flatShading: true });
   const cream = new THREE.MeshStandardMaterial({ color: 0xfffdf8, roughness: 0.6, flatShading: true });
@@ -816,7 +1005,7 @@ function buildScenery() {
   );
   pond.rotation.x = -Math.PI / 2;
   pond.position.set(cx, 0.05, cz);
-  scene.add(pond);
+  world.add(pond);
 
   for (let k = 0; k < 4; k++) {
     const ang = (k / 4) * Math.PI * 2 + 0.4;
@@ -835,7 +1024,7 @@ function buildScenery() {
     g.add(wall, roof);
     g.position.set(x, 0, z);
     g.rotation.y = ang;
-    scene.add(g);
+    world.add(g);
   }
 
   const silo = new THREE.Group();
@@ -849,7 +1038,7 @@ function buildScenery() {
   cap.position.y = 9.1;
   silo.add(siloBody, cap);
   silo.position.set(cx + minD * 0.15, 0, cz - minD * 0.1);
-  scene.add(silo);
+  world.add(silo);
 
   const hillCols = [0xb7e38a, 0xf7c1d8, 0xffe9a0, 0x9fd9ff];
   for (let i = 0; i < (liteScene ? 5 : 7); i++) {
@@ -859,9 +1048,11 @@ function buildScenery() {
       new THREE.MeshLambertMaterial({ color: hillCols[i % hillCols.length], flatShading: true })
     );
     hill.position.set(Math.cos(ang) * 250, 4, Math.sin(ang) * 210);
-    scene.add(hill);
+    world.add(hill);
+  }
   }
 
+  if (activeMap.id !== "neon") {
   for (let i = 0; i < (liteScene ? 5 : 8); i++) {
     const cloud = new THREE.Group();
     const mat = new THREE.MeshLambertMaterial({ color: 0xfffdf8 });
@@ -875,7 +1066,8 @@ function buildScenery() {
     cloud.userData.base = cloud.position.clone();
     cloud.userData.phase = i;
     clouds.push(cloud);
-    scene.add(cloud);
+    world.add(cloud);
+  }
   }
 
   const flagStep = Math.max(1, Math.round((liteScene ? 90 : 55) / (L / frames.length)));
@@ -889,7 +1081,19 @@ function buildScenery() {
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 2.4, 5), poleMat);
     pole.position.y = 1.2;
     const cloth = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 0.48), flagMat.clone());
-    cloth.material.color.set(flagN % 2 ? 0xffe066 : 0xff8fb8);
+    cloth.material.color.set(
+      activeMap.id === "neon"
+        ? flagN % 2
+          ? 0x3de1ff
+          : 0xff4fbf
+        : activeMap.id === "snow"
+          ? flagN % 2
+            ? 0x7ce7c4
+            : 0x8ec5ff
+          : flagN % 2
+            ? 0xffe066
+            : 0xff8fb8
+    );
     cloth.position.set(0.5, 2.05, 0);
     g.add(pole, cloth);
     g.position.set(
@@ -900,7 +1104,7 @@ function buildScenery() {
     g.userData.cloth = cloth;
     g.userData.phase = flagN;
     flags.push(g);
-    scene.add(g);
+    world.add(g);
     flagN += 1;
   }
 
@@ -917,7 +1121,14 @@ function buildScenery() {
   beam.position.y = 4.55;
   const banner = new THREE.Mesh(
     new THREE.PlaneGeometry(Math.min(8, f0.half * 1.5), 1.15),
-    new THREE.MeshBasicMaterial({ map: labelTex("콩트라이더", "#ff8fb8", "#2b2140"), transparent: true })
+    new THREE.MeshBasicMaterial({
+      map: labelTex(
+        activeMap.id === "farm" ? "콩트라이더" : activeMap.name,
+        activeMap.id === "neon" ? "#24143f" : activeMap.id === "snow" ? "#e7f3ff" : "#ff8fb8",
+        activeMap.id === "neon" ? "#3de1ff" : "#2b2140"
+      ),
+      transparent: true,
+    })
   );
   banner.position.set(0, 3.45, 0.45);
   leftP.castShadow = rightP.castShadow = beam.castShadow = shadowsOn;
@@ -934,7 +1145,7 @@ function buildScenery() {
   arch.position.copy(f0.pos);
   _basis.makeBasis(f0.right, f0.up, f0.tangent);
   arch.quaternion.setFromRotationMatrix(_basis);
-  scene.add(arch);
+  world.add(arch);
 
   const checker = new THREE.Mesh(
     new THREE.PlaneGeometry(f0.half * 2, 1.5),
@@ -955,7 +1166,7 @@ function buildScenery() {
   _basis.makeBasis(f0.right, f0.tangent, f0.up);
   checker.quaternion.setFromRotationMatrix(_basis);
   checker.receiveShadow = shadowsOn;
-  scene.add(checker);
+  world.add(checker);
 
   for (const ls of launches) {
     sampleInto(ls, fr);
@@ -966,7 +1177,7 @@ function buildScenery() {
     ramp.position.copy(fr.pos).addScaledVector(fr.up, 0.1);
     _basis.makeBasis(fr.right, fr.up, fr.tangent);
     ramp.quaternion.setFromRotationMatrix(_basis);
-    scene.add(ramp);
+    world.add(ramp);
     placeSign(Math.max(0, ls - 18), "점프!", 1);
   }
   placeSign(22, "출발", -1);
@@ -988,7 +1199,200 @@ function buildScenery() {
     bunch.userData.baseY = bunch.position.y;
     bunch.userData.phase = i * 1.7;
     clouds.push(bunch);
-    scene.add(bunch);
+    world.add(bunch);
+  }
+  buildThemeProps();
+}
+
+function buildThemeProps() {
+  if (activeMap.id === "farm") return;
+  const neon = activeMap.id === "neon";
+  const step = Math.max(1, Math.round((liteScene ? 28 : 18) / (L / frames.length)));
+  if (neon) {
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x24143a, roughness: 0.55, metalness: 0.25, flatShading: true });
+    const winMat = new THREE.MeshStandardMaterial({
+      color: 0x1a1030,
+      emissive: 0xff4fbf,
+      emissiveIntensity: 0.9,
+      roughness: 0.3,
+    });
+    const winMatB = winMat.clone();
+    winMatB.emissive.setHex(0x3de1ff);
+    const winMatC = winMat.clone();
+    winMatC.emissive.setHex(0xffe066);
+    let n = 0;
+    for (let i = 0; i < frames.length && n < (liteScene ? 12 : 22); i += step * 2) {
+      const f = frames[i];
+      const side = n % 2 === 0 ? 1 : -1;
+      const dist = f.half + 7 + (n % 3) * 2.2;
+      const x = f.pos.x + f.right.x * side * dist;
+      const z = f.pos.z + f.right.z * side * dist;
+      if (!trackClear(x, z, f.s, 5.5)) continue;
+      const g = new THREE.Group();
+      const h = 7 + (n % 5) * 2.6;
+      const tower = new THREE.Mesh(new THREE.BoxGeometry(3.4, h, 2.8), wallMat);
+      tower.position.y = h / 2;
+      tower.castShadow = shadowsOn;
+      const wins = n % 3 === 0 ? winMat : n % 3 === 1 ? winMatB : winMatC;
+      const win = new THREE.Mesh(new THREE.BoxGeometry(2.5, h * 0.7, 0.12), wins);
+      win.position.set(0, h * 0.46, 1.42);
+      const cap = new THREE.Mesh(
+        new THREE.BoxGeometry(3.8, 0.28, 3.1),
+        new THREE.MeshStandardMaterial({ color: 0xfffdf8, emissive: wins.emissive, emissiveIntensity: 0.65, roughness: 0.3 })
+      );
+      cap.position.y = h + 0.14;
+      g.add(tower, win, cap);
+      g.position.set(x, f.pos.y, z);
+      g.rotation.y = Math.atan2(f.tangent.x, f.tangent.z);
+      world.add(g);
+      n += 1;
+    }
+    const ringMat = new THREE.MeshStandardMaterial({
+      color: 0xfffdf8,
+      emissive: 0xff4fbf,
+      emissiveIntensity: 0.85,
+      roughness: 0.25,
+    });
+    const ringMatB = ringMat.clone();
+    ringMatB.emissive.setHex(0x3de1ff);
+    let ringN = 0;
+    for (let i = step * 6; i < frames.length; i += step * 5) {
+      const f = frames[i];
+      if (f.tag === "tunnel" || f.tag === "drop") continue;
+      const arch = new THREE.Mesh(
+        new THREE.TorusGeometry(f.half + 1.15, 0.1, 8, 20, Math.PI),
+        ringN % 2 ? ringMatB : ringMat
+      );
+      arch.position.copy(f.pos).addScaledVector(f.up, 0.15);
+      _basis.makeBasis(f.right, f.up, f.tangent);
+      arch.quaternion.setFromRotationMatrix(_basis);
+      world.add(arch);
+      ringN += 1;
+    }
+    const poleMat = new THREE.MeshStandardMaterial({ color: 0x2a2040, roughness: 0.6 });
+    const bulbA = new THREE.MeshStandardMaterial({ color: 0xfffdf8, emissive: 0xff4fbf, emissiveIntensity: 1.4 });
+    const bulbB = bulbA.clone();
+    bulbB.emissive.setHex(0x3de1ff);
+    let lamps = 0;
+    for (let i = 0; i < frames.length && lamps < (liteScene ? 10 : 18); i += step * 2) {
+      const f = frames[i];
+      if (f.tag === "tunnel") continue;
+      const side = lamps % 2 === 0 ? -1 : 1;
+      const g = new THREE.Group();
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 3.2, 6), poleMat);
+      pole.position.y = 1.6;
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.08, 0.08), poleMat);
+      arm.position.set(-side * 0.4, 3.15, 0);
+      const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), lamps % 2 ? bulbB : bulbA);
+      bulb.position.set(-side * 0.82, 3.05, 0);
+      g.add(pole, arm, bulb);
+      g.position.copy(f.pos).addScaledVector(f.right, side * (f.half + 1.35));
+      g.rotation.y = Math.atan2(f.right.x, f.right.z);
+      world.add(g);
+      lamps += 1;
+    }
+    const signs = ["야시장", "콩네온", "야식골목"];
+    signs.forEach((text, si) => {
+      const f = frames[Math.min(frames.length - 1, Math.round(frames.length * (0.18 + si * 0.28)))];
+      if (!f || f.tag === "tunnel") return;
+      const side = si % 2 === 0 ? 1 : -1;
+      const board = new THREE.Mesh(
+        new THREE.PlaneGeometry(3.4, 1.35),
+        new THREE.MeshBasicMaterial({
+          map: labelTex(text, si % 2 ? "#3de1ff" : "#ff4fbf", "#1a1030"),
+          transparent: true,
+          side: THREE.DoubleSide,
+        })
+      );
+      board.position.copy(f.pos).addScaledVector(f.right, side * (f.half + 3.2)).addScaledVector(f.up, 2.4);
+      _basis.makeBasis(f.right, f.up, f.tangent.clone().negate());
+      board.quaternion.setFromRotationMatrix(_basis);
+      world.add(board);
+    });
+    const moon = new THREE.Mesh(
+      new THREE.SphereGeometry(16, 16, 12),
+      new THREE.MeshBasicMaterial({ color: 0xfff1c9, fog: false })
+    );
+    moon.position.set(-80, 120, -160);
+    world.add(moon);
+    return;
+  }
+  const pineMat = new THREE.MeshLambertMaterial({ color: 0x2f6b45 });
+  const snowMat = new THREE.MeshLambertMaterial({ color: 0xfffdf8 });
+  const rockMat = new THREE.MeshLambertMaterial({ color: 0xb7c4d4, flatShading: true });
+  const woodMat = new THREE.MeshStandardMaterial({ color: 0x8a5a3c, roughness: 0.75, flatShading: true });
+  const roofMat = new THREE.MeshStandardMaterial({ color: 0xf4fbff, roughness: 0.55, flatShading: true });
+  let pines = 0;
+  for (let i = 0; i < frames.length && pines < (liteScene ? 16 : 30); i += step) {
+    const f = frames[i];
+    const side = pines % 2 === 0 ? -1 : 1;
+    const dist = f.half + 4.2 + (pines % 4) * 1.1;
+    const x = f.pos.x + f.right.x * side * dist;
+    const z = f.pos.z + f.right.z * side * dist;
+    if (!trackClear(x, z, f.s, 4.2)) continue;
+    const g = new THREE.Group();
+    const h = 2.6 + (pines % 3) * 0.85;
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(1.15, h, 7), pineMat);
+    cone.position.y = h * 0.55;
+    cone.castShadow = shadowsOn;
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(0.62, 0.8, 6), snowMat);
+    cap.position.y = h * 0.95;
+    g.add(cone, cap);
+    g.position.set(x, f.pos.y, z);
+    world.add(g);
+    pines += 1;
+  }
+  for (let i = 0; i < (liteScene ? 5 : 8); i++) {
+    const ang = (i / 8) * Math.PI * 2;
+    const peak = new THREE.Mesh(new THREE.ConeGeometry(34 + (i % 3) * 8, 30 + (i % 4) * 6, 6), snowMat);
+    peak.position.set(Math.cos(ang) * 230, 8, Math.sin(ang) * 200);
+    world.add(peak);
+    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(6 + (i % 2) * 3), rockMat);
+    rock.position.set(Math.cos(ang + 0.4) * 160, 3, Math.sin(ang + 0.4) * 150);
+    world.add(rock);
+  }
+  const warm = new THREE.MeshStandardMaterial({ color: 0xfff6c8, emissive: 0xffb703, emissiveIntensity: 0.9 });
+  let lamps = 0;
+  for (let i = step * 3; i < frames.length && lamps < (liteScene ? 8 : 14); i += step * 3) {
+    const f = frames[i];
+    if (f.tag === "tunnel") continue;
+    const side = lamps % 2 === 0 ? 1 : -1;
+    const g = new THREE.Group();
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.1, 2.6, 6), woodMat);
+    pole.position.y = 1.3;
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), warm);
+    bulb.position.y = 2.7;
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(0.38, 0.32, 6), snowMat);
+    cap.position.y = 2.95;
+    g.add(pole, bulb, cap);
+    g.position.copy(f.pos).addScaledVector(f.right, side * (f.half + 1.45));
+    world.add(g);
+    lamps += 1;
+  }
+  let lodges = 0;
+  for (let i = step * 8; i < frames.length && lodges < (liteScene ? 2 : 3); i += step * 10) {
+    const f = frames[i];
+    const side = lodges % 2 === 0 ? -1 : 1;
+    const x = f.pos.x + f.right.x * side * (f.half + 8);
+    const z = f.pos.z + f.right.z * side * (f.half + 8);
+    if (!trackClear(x, z, f.s, 7)) continue;
+    const g = new THREE.Group();
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(4.6, 2.2, 3.4), woodMat);
+    wall.position.y = 1.1;
+    wall.castShadow = shadowsOn;
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(3.4, 1.6, 4), roofMat);
+    roof.position.y = 2.9;
+    roof.rotation.y = Math.PI / 4;
+    const glow = new THREE.Mesh(
+      new THREE.BoxGeometry(1.1, 0.8, 0.08),
+      new THREE.MeshStandardMaterial({ color: 0xfff1c2, emissive: 0xffb703, emissiveIntensity: 0.55 })
+    );
+    glow.position.set(0, 1.25, 1.72);
+    g.add(wall, roof, glow);
+    g.position.set(x, f.pos.y, z);
+    g.rotation.y = Math.atan2(f.tangent.x, f.tangent.z);
+    world.add(g);
+    lodges += 1;
   }
 }
 
@@ -1002,8 +1406,12 @@ function buildCourseFeatures() {
     const ribs = [];
     const step = liteScene ? 16 : 9;
     for (let s = tunnel.s0 + 4; s < tunnel.s1 - 2; s += step) ribs.push(s);
-    const dark = new THREE.MeshLambertMaterial({ color: 0x3a3158 });
-    const beam = new THREE.MeshLambertMaterial({ color: 0x6d5a8a });
+    const dark = new THREE.MeshLambertMaterial({
+      color: activeMap.id === "neon" ? 0x1a1030 : activeMap.id === "snow" ? 0x8ea4bb : 0x3a3158,
+    });
+    const beam = new THREE.MeshLambertMaterial({
+      color: activeMap.id === "neon" ? 0x3de1ff : activeMap.id === "snow" ? 0xe7f3ff : 0x6d5a8a,
+    });
     addInstances(new THREE.BoxGeometry(1, 1, 1), dark, ribs.length * 2, (i, mesh) => {
       sampleInto(ribs[(i / 2) | 0], fr);
       const side = i % 2 === 0 ? -1 : 1;
@@ -1052,7 +1460,7 @@ function buildCourseFeatures() {
       new THREE.MeshStandardMaterial({ color: 0x7ce7c4, roughness: 0.85, side: THREE.DoubleSide })
     );
     strip.receiveShadow = shadowsOn;
-    scene.add(strip);
+    world.add(strip);
     shortcut.a = a;
     shortcut.b = b;
     shortcut.len = len;
@@ -1065,7 +1473,7 @@ function buildCourseFeatures() {
     oil.rotation.x = -Math.PI / 2;
     oil.position.copy(a).lerp(b, 0.48);
     oil.position.y += 0.16;
-    scene.add(oil);
+    world.add(oil);
   }
   if (narrow) {
     placeSign(narrow.s0 + 8, "좁은 길", 1);
@@ -1088,7 +1496,7 @@ function addHazard(s, u, kind, r) {
   );
   if (kind === "oil") mesh.rotation.x = -Math.PI / 2;
   mesh.position.copy(fr.pos).addScaledVector(fr.right, u).addScaledVector(fr.up, kind === "oil" ? 0.08 : 0.28);
-  scene.add(mesh);
+  world.add(mesh);
   hazards.push({ s, u, kind, r, mesh });
 }
 
@@ -1101,7 +1509,7 @@ function placeSign(dist, text, side) {
   sign.position.copy(fr.pos).addScaledVector(fr.right, side * (fr.half + 2.4)).addScaledVector(fr.up, 1.8);
   _basis.makeBasis(fr.right, fr.up, fr.tangent.clone().negate());
   sign.quaternion.setFromRotationMatrix(_basis);
-  scene.add(sign);
+  world.add(sign);
 }
 
 function makeBadge(n, hex) {
@@ -1395,6 +1803,21 @@ function buildKarts() {
   });
 }
 
+function itemStations() {
+  const rows = [20];
+  for (const m of courseMarks) {
+    const len = m.s1 - m.s0;
+    if (m.tag === "drop" || m.tag === "kink" || m.tag === "kinkOut") continue;
+    if (len > 78) {
+      rows.push(m.s0 + len * 0.32);
+      rows.push(m.s0 + len * 0.7);
+    } else if (len > 34) {
+      rows.push(m.s0 + len * 0.55);
+    }
+  }
+  return rows;
+}
+
 function buildItems() {
   const qTex = canvasTex(128, 128, (g) => {
     g.fillStyle = "#ffe066";
@@ -1413,7 +1836,7 @@ function buildItems() {
     emissiveIntensity: 0.35,
   });
   let phase = 0;
-  const addBox = (s, u, world) => {
+  const addBox = (s, u, spot) => {
     const group = new THREE.Group();
     const cube = new THREE.Mesh(new THREE.BoxGeometry(1.15, 1.15, 1.15), boxMat);
     const ring = new THREE.Mesh(
@@ -1422,18 +1845,18 @@ function buildItems() {
     );
     ring.rotation.x = Math.PI / 2;
     group.add(cube, ring);
-    scene.add(group);
+    world.add(group);
     boxes.push({
       s,
       u,
-      world,
+      world: spot,
       alive: true,
       cool: 0,
       mesh: group,
       phase: phase++,
     });
   };
-  const rowS = [22, 68, 128, 165, 230, 275, 330, 375, 448, 500, 590, 650, 710, 755, 800, 900, 970, 1035, 1088, 1144];
+  const rowS = activeMap.rows || itemStations();
   for (const raw of rowS) {
     let s = ((raw % L) + L) % L;
     if (launchS >= 0 && Math.abs(angDist(s, launchS)) < 18) s = (s + 26) % L;
@@ -1463,7 +1886,7 @@ function buildItems() {
     stem.position.y = 0.28;
     g.add(peel, stem);
     g.visible = false;
-    scene.add(g);
+    world.add(g);
     bananas.push({ alive: false, s: 0, u: 0, owner: null, grace: 0, life: 0, mesh: g });
   }
 
@@ -1486,7 +1909,7 @@ function buildItems() {
     flame.position.z = -0.35;
     g.add(bean, flame);
     g.visible = false;
-    scene.add(g);
+    world.add(g);
     missiles.push({ alive: false, s: 0, u: 0, owner: null, life: 0, speed: 0, kind: "bean", mesh: g, mat });
   }
   const slickMat = new THREE.MeshBasicMaterial({ color: 0x140e22, transparent: true, opacity: 0.9 });
@@ -1494,7 +1917,7 @@ function buildItems() {
     const mesh = new THREE.Mesh(new THREE.CircleGeometry(1.7, 16), slickMat);
     mesh.rotation.x = -Math.PI / 2;
     mesh.visible = false;
-    scene.add(mesh);
+    world.add(mesh);
     slicks.push({ alive: false, s: 0, u: 0, owner: null, grace: 0, life: 0, mesh });
   }
 }
@@ -2688,15 +3111,15 @@ function conformCamera(pos) {
   }
   const roadY = f.pos.y + f.right.y * u;
   if (pos.y < roadY + 0.62) pos.y = roadY + 0.62;
-  if (f.tag === "tunnel" && pos.y > roadY + 2.45) pos.y = roadY + 2.45;
+  if (f.tag === "tunnel" && pos.y > roadY + 2.7) pos.y = roadY + 2.7;
 }
 
 function updateCamera(dt) {
   const kart = player;
   const fwd = kart.tan;
   const up = kart.up;
-  let back = 3.4;
-  const upOff = 1.55 + kart.yLift * 0.12;
+  let back = 4.15;
+  const upOff = 1.72 + kart.yLift * 0.12;
   for (const o of karts) {
     if (o === kart) continue;
     const dx = o.mesh.position.x - kart.mesh.position.x;
@@ -2726,7 +3149,7 @@ function updateCamera(dt) {
     camera.position.lerp(_desired, 1 - Math.exp(-32 * dt));
   }
   conformCamera(camera.position);
-  _look.copy(kart.mesh.position).addScaledVector(fwd, 3.9).addScaledVector(up, 0.55);
+  _look.copy(kart.mesh.position).addScaledVector(fwd, 4.5).addScaledVector(up, 0.64);
   const roll = -TURN * kart.steer * 0.045 - THREE.MathUtils.clamp(kart.sideVel, -8, 8) * 0.004;
   _camUp.copy(up).applyAxisAngle(fwd, roll);
   camera.up.lerp(_camUp, 1 - Math.exp(-7 * dt)).normalize();
@@ -2830,6 +3253,89 @@ function formatTime(t) {
   const s = Math.floor(Math.max(0, t)) % 60;
   const m = Math.floor(Math.max(0, t) / 60);
   return `${m}:${String(s).padStart(2, "0")}.${String(cs).padStart(2, "0")}`;
+}
+
+function applyTheme() {
+  scene.background.setHex(activeMap.background);
+  scene.fog.color.setHex(activeMap.fog);
+  hemi.color.setHex(activeMap.hemiSky);
+  hemi.groundColor.setHex(activeMap.hemiGround);
+  sun.color.setHex(activeMap.sunColor);
+  renderer.toneMappingExposure = activeMap.exposure;
+  if (activeMap.id === "neon") {
+    hemi.intensity = 0.78;
+    sun.intensity = 0.42;
+    fill.intensity = 0.55;
+    fill.color.setHex(0xff4fbf);
+  } else if (activeMap.id === "snow") {
+    hemi.intensity = 1.05;
+    sun.intensity = 1.25;
+    fill.intensity = 0.34;
+    fill.color.setHex(0xd7e8ff);
+  } else {
+    hemi.intensity = 0.92;
+    sun.intensity = 1.45;
+    fill.intensity = 0.28;
+    fill.color.setHex(0xc5d9ff);
+  }
+}
+
+function disposeNode(obj) {
+  obj.traverse((node) => {
+    if (node.geometry) node.geometry.dispose();
+    const mats = node.material ? [].concat(node.material) : [];
+    for (const mat of mats) {
+      if (mat.map) mat.map.dispose();
+      mat.dispose();
+    }
+  });
+}
+
+function clearWorld() {
+  for (const child of [...world.children]) {
+    world.remove(child);
+    disposeNode(child);
+  }
+  boxes.length = 0;
+  hazards.length = 0;
+  flags.length = 0;
+  clouds.length = 0;
+  archLights.length = 0;
+  bananas.length = 0;
+  missiles.length = 0;
+  slicks.length = 0;
+  shortcut = null;
+  launches.length = 0;
+}
+
+let builtMapId = null;
+let kartsBuilt = false;
+
+function ensureWorld(map) {
+  activeMap = map;
+  if (builtMapId === map.id) {
+    paintBest();
+    return;
+  }
+  if (builtMapId) clearWorld();
+  applyTheme();
+  buildTrack();
+  buildRoad();
+  buildBarriers();
+  buildScenery();
+  buildCourseFeatures();
+  if (!kartsBuilt) {
+    buildKarts();
+    kartsBuilt = true;
+  }
+  buildItems();
+  buildMinimap();
+  paintBest();
+  placeAll();
+  camSnap = 5;
+  builtMapId = map.id;
+  const nameEl = document.getElementById("map-name");
+  if (nameEl) nameEl.textContent = map.name;
 }
 
 function paintBest() {
@@ -3198,6 +3704,23 @@ function bindHold(el, onDown, onUp) {
 }
 
 window.addEventListener("keydown", (e) => {
+  if (state === "start" && !e.repeat) {
+    if (e.code === "ArrowLeft" || e.code === "KeyA") {
+      e.preventDefault();
+      selectMap(mapIndex - 1);
+      return;
+    }
+    if (e.code === "ArrowRight" || e.code === "KeyD") {
+      e.preventDefault();
+      selectMap(mapIndex + 1);
+      return;
+    }
+    if (e.code === "Enter" || e.code === "Space") {
+      e.preventDefault();
+      document.getElementById("btn-start").click();
+      return;
+    }
+  }
   if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) e.preventDefault();
   if ((e.code === "ControlLeft" || e.code === "ControlRight") && state === "racing") {
     e.preventDefault();
@@ -3261,11 +3784,19 @@ document.getElementById("game-root").addEventListener(
 
 document.getElementById("btn-start").addEventListener("click", () => {
   sfx.boot();
+  ensureWorld(MAPS[mapIndex]);
   beginCountdown();
 });
 document.getElementById("btn-retry").addEventListener("click", () => {
   sfx.boot();
+  ensureWorld(MAPS[mapIndex]);
   beginCountdown();
+});
+document.getElementById("btn-maps")?.addEventListener("click", () => {
+  state = "start";
+  resultEl.classList.add("hidden");
+  startEl.classList.remove("hidden");
+  paintBest();
 });
 muteBtn.addEventListener("click", () => {
   sfx.enabled = !sfx.enabled;
@@ -3274,17 +3805,94 @@ muteBtn.addEventListener("click", () => {
   if (sfx.enabled) sfx.boot();
 });
 
-buildTrack();
-buildRoad();
-buildBarriers();
-buildScenery();
-buildCourseFeatures();
-buildKarts();
-buildItems();
-buildMinimap();
-paintBest();
+let mapIndex = 0;
+function drawPreview(canvas, map) {
+  const ctx = canvas.getContext("2d");
+  const grd = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+  grd.addColorStop(0, map.preview[0]);
+  grd.addColorStop(1, map.preview[1]);
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  let x = 0;
+  let z = 0;
+  let h = 0;
+  const pts = [[0, 0]];
+  for (const [op, a, b] of map.commands) {
+    if (op === "f") {
+      x += Math.cos(h) * a;
+      z += Math.sin(h) * a;
+      pts.push([x, z]);
+    } else {
+      const steps = Math.max(8, Math.round(Math.abs(a) / 2));
+      const dH = ((a * Math.PI) / 180) / steps;
+      const stepLen = Math.abs(b * dH);
+      for (let i = 0; i < steps; i++) {
+        const mid = h + dH / 2;
+        h += dH;
+        x += Math.cos(mid) * stepLen;
+        z += Math.sin(mid) * stepLen;
+        pts.push([x, z]);
+      }
+    }
+  }
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minZ = Infinity;
+  let maxZ = -Infinity;
+  for (const [px, pz] of pts) {
+    minX = Math.min(minX, px);
+    maxX = Math.max(maxX, px);
+    minZ = Math.min(minZ, pz);
+    maxZ = Math.max(maxZ, pz);
+  }
+  const pad = 14;
+  const s = Math.min((canvas.width - pad * 2) / (maxX - minX || 1), (canvas.height - pad * 2) / (maxZ - minZ || 1));
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = "rgba(43,33,64,0.35)";
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  pts.forEach(([px, pz], i) => {
+    const X = pad + (px - minX) * s;
+    const Y = canvas.height - pad - (pz - minZ) * s;
+    if (i === 0) ctx.moveTo(X, Y);
+    else ctx.lineTo(X, Y);
+  });
+  ctx.stroke();
+  ctx.strokeStyle = map.preview[2];
+  ctx.lineWidth = 3.5;
+  ctx.stroke();
+}
+function renderMapCards() {
+  const list = document.getElementById("map-list");
+  if (!list) return;
+  list.innerHTML = "";
+  MAPS.forEach((map, i) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = `map-card${i === mapIndex ? " on" : ""}`;
+    const canvas = document.createElement("canvas");
+    canvas.width = 280;
+    canvas.height = 132;
+    canvas.className = "map-preview";
+    drawPreview(canvas, map);
+    const body = document.createElement("span");
+    body.className = "map-copy";
+    body.innerHTML = `<b>${map.name}</b><em>${map.difficulty}</em><small>${map.blurb}</small>`;
+    btn.append(canvas, body);
+    btn.addEventListener("click", () => selectMap(i));
+    list.appendChild(btn);
+  });
+}
+function selectMap(i) {
+  mapIndex = (i + MAPS.length) % MAPS.length;
+  activeMap = MAPS[mapIndex];
+  renderMapCards();
+  paintBest();
+}
+renderMapCards();
+ensureWorld(MAPS[0]);
 resize();
-placeAll();
 
 window.__kongTrider = {
   get state() {
