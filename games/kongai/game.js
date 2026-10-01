@@ -632,8 +632,8 @@
     if (e.phase === 1) {
       e.cd1 -= dt;
       if (e.cd1 <= 0) {
-        e.cd1 = 0.14;
-        spiral(e.x - 10, e.y, e.spin, 4, 118, 7, "#ff8fb8", "petal");
+        e.cd1 = 0.1;
+        spiral(e.x - 10, e.y, e.spin, 5, 112, 7, "#ff8fb8", "petal");
       }
       e.cd2 -= dt;
       if (e.cd2 <= 0) {
@@ -682,9 +682,9 @@
     if (e.phase === 1) {
       e.cd1 -= dt;
       if (e.cd1 <= 0) {
-        e.cd1 = 0.42;
+        e.cd1 = 0.28;
         const gap = H * 0.5 + Math.sin(e.t * 0.85) * H * 0.26;
-        curtain(e.x + 30, gap, gapH, 155, 7, "#9be7ff", "kunai");
+        curtain(e.x + 30, gap, gapH, 148, 7, "#9be7ff", "kunai");
       }
       e.cd2 -= dt;
       if (e.cd2 <= 0) {
@@ -987,6 +987,7 @@
     showBanner(`STAGE ${stageIndex + 1}`, st.name, 1.6);
     sfx.boot();
     syncHud(true);
+    requestAnimationFrame(resize);
   }
 
   function gameOver() {
@@ -1038,6 +1039,7 @@
     el.bossHud.classList.add("hidden");
     el.banner.classList.add("hidden");
     el.title.classList.remove("hidden");
+    requestAnimationFrame(resize);
   }
 
   let hudCache = "";
@@ -1501,24 +1503,33 @@
     g.save();
     g.translate(x, y);
     g.scale(s, s);
-    g.fillStyle = "#e23b2f";
-    g.fillRect(-58, -102, 16, 108);
-    g.fillRect(42, -102, 16, 108);
-    g.fillStyle = "#9d1e1a";
-    g.fillRect(-66, -64, 132, 12);
-    g.fillStyle = "#e23b2f";
+    g.fillStyle = "#c81f1a";
+    g.fillRect(-64, -108, 20, 116);
+    g.fillRect(44, -108, 20, 116);
+    g.fillStyle = "#ff5a45";
+    g.fillRect(-60, -108, 6, 116);
+    g.fillRect(48, -108, 6, 116);
+    g.fillStyle = "#7a1412";
+    g.fillRect(-74, -66, 148, 16);
+    g.fillStyle = "#e10600";
     g.beginPath();
-    g.moveTo(-86, -118);
-    g.quadraticCurveTo(0, -92, 86, -118);
-    g.lineTo(78, -104);
-    g.quadraticCurveTo(0, -82, -78, -104);
+    g.moveTo(-102, -138);
+    g.quadraticCurveTo(0, -108, 102, -138);
+    g.lineTo(92, -118);
+    g.quadraticCurveTo(0, -94, -92, -118);
     g.closePath();
     g.fill();
     g.strokeStyle = "#2b2140";
-    g.lineWidth = 2.2;
+    g.lineWidth = 2.4;
     g.stroke();
-    g.fillStyle = "#f2f2f2";
-    g.fillRect(-70, -112, 140, 7);
+    g.fillStyle = "#fffdf8";
+    g.beginPath();
+    g.moveTo(-96, -130);
+    g.quadraticCurveTo(0, -112, 96, -130);
+    g.lineTo(90, -122);
+    g.quadraticCurveTo(0, -106, -90, -122);
+    g.closePath();
+    g.fill();
     g.restore();
   }
 
@@ -2053,66 +2064,74 @@
       g.stroke();
     } else if (look === "fortress") {
       g.save();
+      g.scale(1.28, 1.28);
+      g.save();
       g.rotate(e.spin * 0.35);
-      g.strokeStyle = "#7ee0ff";
-      g.lineWidth = 6;
+      g.strokeStyle = "#d7f6ff";
+      g.lineWidth = 7;
       g.beginPath();
-      g.arc(0, 0, 96, 0, Math.PI * 2);
+      g.arc(0, 0, 102, 0, Math.PI * 2);
       g.stroke();
-      g.fillStyle = "#121a2a";
-      for (let i = 0; i < 14; i++) {
+      g.fillStyle = "#8ec4de";
+      for (let i = 0; i < 12; i++) {
         g.save();
-        g.rotate((i / 14) * Math.PI * 2);
-        g.fillRect(-8, 88, 16, 26);
+        g.rotate((i / 12) * Math.PI * 2);
+        g.fillRect(-9, 94, 18, 28);
         g.restore();
       }
       g.restore();
-      g.fillStyle = "#162033";
-      g.strokeStyle = "#9be7ff";
-      g.lineWidth = 4;
-      roundRect(g, -78, -64, 156, 128, 16);
+      g.fillStyle = "#c5d4e4";
+      g.strokeStyle = "#f4fbff";
+      g.lineWidth = 5;
+      roundRect(g, -86, -70, 172, 140, 18);
       g.fill();
       g.stroke();
-      g.fillStyle = "#22324c";
-      g.fillRect(-92, -96, 28, 48);
-      g.fillRect(64, -108, 30, 58);
-      g.fillRect(-16, -118, 32, 58);
-      kawara(g, -100, -94, 46, 14, 10, "#3d6e88");
-      kawara(g, 54, -106, 50, 16, 10, "#3d6e88");
-      kawara(g, -28, -116, 56, 16, 12, "#67b7d4");
-      g.fillStyle = "#0c1422";
-      g.fillRect(-128, -22, 52, 14);
-      g.fillRect(-122, 8, 46, 12);
-      g.fillRect(-118, 32, 40, 11);
-      g.fillStyle = "#ffb15a";
+      g.fillStyle = "#8ea4bc";
+      g.fillRect(-100, -108, 32, 52);
+      g.fillRect(68, -122, 34, 64);
+      g.fillRect(-18, -132, 36, 66);
+      kawara(g, -110, -106, 52, 16, 12, "#e2b15a");
+      kawara(g, 58, -120, 54, 18, 12, "#e2b15a");
+      kawara(g, -32, -130, 64, 18, 14, "#ffe066");
+      g.fillStyle = "#2a3848";
+      g.strokeStyle = "#9be7ff";
+      g.lineWidth = 3;
+      g.fillRect(-142, -24, 58, 16);
+      g.strokeRect(-142, -24, 58, 16);
+      g.fillRect(-136, 10, 50, 14);
+      g.strokeRect(-136, 10, 50, 14);
+      g.fillRect(-130, 36, 44, 12);
+      g.strokeRect(-130, 36, 44, 12);
+      g.fillStyle = "#ff7a3c";
       g.beginPath();
-      g.arc(-124, -15, 4, 0, Math.PI * 2);
-      g.arc(-118, 14, 3.5, 0, Math.PI * 2);
+      g.arc(-138, -16, 5, 0, Math.PI * 2);
+      g.arc(-132, 16, 4.5, 0, Math.PI * 2);
       g.fill();
-      const core = g.createRadialGradient(0, 6, 4, 0, 6, 48);
+      const core = g.createRadialGradient(0, 8, 6, 0, 8, 58);
       core.addColorStop(0, "#fff");
-      core.addColorStop(0.35, "#ffe066");
-      core.addColorStop(0.7, "#7ee0ff");
+      core.addColorStop(0.28, "#ffe066");
+      core.addColorStop(0.62, "#7ee0ff");
       core.addColorStop(1, "rgba(126,224,255,0)");
       g.fillStyle = core;
       g.beginPath();
-      g.arc(0, 6, 48, 0, Math.PI * 2);
+      g.arc(0, 8, 58, 0, Math.PI * 2);
       g.fill();
       g.strokeStyle = "#fff";
-      g.lineWidth = 2;
+      g.lineWidth = 3;
       g.beginPath();
-      g.arc(0, 6, 16 + Math.sin(e.t * 6) * 2, 0, Math.PI * 2);
+      g.arc(0, 8, 18 + Math.sin(e.t * 6) * 3, 0, Math.PI * 2);
       g.stroke();
-      g.fillStyle = "#d7f6ff";
-      g.fillRect(-40, -18, 16, 8);
-      g.fillRect(22, -18, 16, 8);
-      g.fillRect(-18, 28, 36, 8);
+      g.fillStyle = "#163044";
+      g.fillRect(-48, -16, 18, 10);
+      g.fillRect(28, -16, 18, 10);
+      g.fillRect(-22, 34, 44, 10);
+      g.restore();
     } else if (look === "guardian") {
       g.fillStyle = "rgba(255, 214, 140, 0.16)";
       g.beginPath();
       g.arc(0, 0, 108, 0, Math.PI * 2);
       g.fill();
-      toriiGate(g, 0, 36, 1.15);
+      toriiGate(g, 0, 48, 1.45);
       for (let i = 0; i < 6; i++) {
         const a = e.spin * 0.6 + i * 1.05;
         g.strokeStyle = i % 2 ? "#e23b2f" : "#fff1c4";
@@ -2157,15 +2176,16 @@
       const sunY = H * 0.16;
       g.save();
       g.translate(sunX, sunY);
-      g.rotate(cam * 0.01);
-      g.fillStyle = "rgba(255,246,200,0.16)";
-      for (let i = 0; i < 9; i++) {
-        g.rotate(Math.PI / 4.5);
+      g.rotate(cam * 0.008);
+      g.strokeStyle = "rgba(255,246,210,0.28)";
+      g.lineWidth = 10;
+      g.lineCap = "round";
+      for (let i = 0; i < 8; i++) {
+        g.rotate(Math.PI / 4);
         g.beginPath();
-        g.moveTo(-18, 0);
-        g.lineTo(18, 0);
-        g.lineTo(0, H * 0.85);
-        g.fill();
+        g.moveTo(0, 30);
+        g.lineTo(0, H * 0.55);
+        g.stroke();
       }
       g.restore();
       const sun = g.createRadialGradient(sunX, sunY, 8, sunX, sunY, 70);
@@ -2176,21 +2196,17 @@
       g.beginPath();
       g.arc(sunX, sunY, 70, 0, Math.PI * 2);
       g.fill();
-      g.fillStyle = "rgba(214, 150, 176, 0.55)";
-      g.beginPath();
-      g.moveTo(0, H);
-      for (let x = 0; x <= W; x += 18) {
-        const yy = H * 0.62 + Math.sin(x * 0.01 + cam * 0.01) * 16 + Math.sin(x * 0.003) * 22;
-        g.lineTo(x, yy);
-      }
-      g.lineTo(W, H);
-      g.fill();
+      const far = g.createLinearGradient(0, H * 0.58, 0, H * 0.78);
+      far.addColorStop(0, "rgba(232, 170, 190, 0)");
+      far.addColorStop(1, "rgba(214, 150, 176, 0.35)");
+      g.fillStyle = far;
+      g.fillRect(0, H * 0.55, W, H * 0.45);
       const span = W + 520;
-      const castleX = ((W * 0.62 - cam * 0.18) % span + span) % span - 160;
-      drawCastle(g, castleX, H * 0.42, 1.15);
-      const treeSpace = 280;
+      const castleX = ((W * 0.55 - cam * 0.18) % span + span) % span - 120;
+      drawCastle(g, castleX, H * 0.46, 1.55);
+      const treeSpace = 250;
       let tx = -((cam * 0.38) % treeSpace) - 40;
-      for (; tx < W + treeSpace; tx += treeSpace) cherryTree(g, tx, H * 0.58, 0.7);
+      for (; tx < W + treeSpace; tx += treeSpace) cherryTree(g, tx, H * 0.62, 0.95);
       const roofSpace = 168;
       let rx = -((cam * 0.62) % roofSpace) - 20;
       g.save();
@@ -2290,7 +2306,7 @@
       haiden(g, hallX, H * 0.62, 1);
       const gateSpace = 300;
       let gx = -((cam * 0.45) % gateSpace) - 30;
-      for (; gx < W + gateSpace; gx += gateSpace) toriiGate(g, gx, H * 0.86, 0.85);
+      for (; gx < W + gateSpace; gx += gateSpace) toriiGate(g, gx, H * 0.9, 1.15);
       let lx = -((cam * 0.55) % 220);
       for (; lx < W + 220; lx += 220) toro(g, lx + 40, H * 0.8, 0.85);
       const band = g.createLinearGradient(0, H * 0.46, 0, H * 0.7);
@@ -2525,6 +2541,7 @@
   }
   frame.last = performance.now();
 
+  let lastBox = "";
   function resize() {
     const coarse = window.matchMedia("(pointer: coarse)").matches || Math.min(window.innerWidth, window.innerHeight) < 760;
     const portrait = coarse && window.innerHeight > window.innerWidth * 1.05;
@@ -2536,7 +2553,7 @@
     canvas.height = Math.max(2, Math.floor(r.height * dpr));
     if (portrait && r.width > 2 && r.height > 2) {
       H = 900;
-      W = Math.max(420, Math.round(H * (r.width / r.height)));
+      W = Math.max(380, Math.round(H * (r.width / r.height)));
     } else {
       W = 960;
       H = 540;
@@ -2545,9 +2562,13 @@
     view.s = s;
     view.ox = (canvas.width - W * s) / 2;
     view.oy = (canvas.height - H * s) / 2;
-    for (const a of ambience) {
-      a.x = Math.random() * W;
-      a.y = Math.random() * H;
+    const box = `${Math.round(r.width)}x${Math.round(r.height)}:${W}x${H}`;
+    if (box !== lastBox) {
+      lastBox = box;
+      for (const a of ambience) {
+        a.x = Math.random() * W;
+        a.y = Math.random() * H;
+      }
     }
     player.x = clamp(player.x, 28, W * 0.62);
     player.y = clamp(player.y, 26, H - 26);
@@ -2729,6 +2750,7 @@
   });
 
   window.addEventListener("resize", resize);
+  if (window.ResizeObserver) new ResizeObserver(() => resize()).observe(canvas);
   buildPicks();
   resize();
   el.hi.textContent = fmt(hi);
