@@ -46,14 +46,14 @@
           <p class="kicker">심심타임</p>
           <h1>럭키콩</h1>
           <p class="lead">
-            광장을 돌아다니며 가위바위보, 돌림판, 짝맞추기 같은 운빨 게임으로 콩알을 불려 보세요.
+            광장을 돌아다니며 가위바위보, 돌림판, 슬롯, 하이로우로 콩알을 불려 보세요.
             <b>1,500</b>으로 시작해 <b>500,000</b>이면 승리, 콩알이 100 미만이면 파산이에요.
           </p>
           <ul class="controls">
             <li class="kb-only"><kbd>W A S D</kbd> 광장 이동</li>
             <li class="kb-only"><kbd>E</kbd> NPC에게 말걸기</li>
             <li class="touch-only">왼쪽 스틱으로 이동 · 오른쪽 버튼으로 말걸기</li>
-            <li>번 돈으로 모자 · 악세사리 구매</li>
+            <li>번 돈으로 모자, 날개, 펫, 스킨 구매</li>
           </ul>
           <button id="btn-start" type="button">광장으로</button>
         </div>
@@ -79,7 +79,16 @@
             </div>
           </div>
 
+          <p id="odds-line" class="odds hidden"></p>
+          <div id="fx" class="fx" aria-hidden="true"></div>
+          <p id="big-banner" class="big-banner hidden">대박!</p>
+
           <div id="stage-rps" class="stage hidden">
+            <div class="rps-duel">
+              <div><b id="rps-me">❓</b><small>나</small></div>
+              <div class="vs">VS</div>
+              <div><b id="rps-npc">❓</b><small>상대</small></div>
+            </div>
             <div class="choice-row">
               <button type="button" class="choice" data-rps="0">✊<span>바위</span></button>
               <button type="button" class="choice" data-rps="1">✋<span>보</span></button>
@@ -111,6 +120,77 @@
             </div>
           </div>
 
+          <div id="stage-slot" class="stage hidden">
+            <div class="cabinet" id="cabinet">
+              <div class="marquee">
+                <div class="bulbs" aria-hidden="true">
+                  <i class="bulb" style="animation-delay:0s"></i>
+                  <i class="bulb" style="animation-delay:.08s"></i>
+                  <i class="bulb" style="animation-delay:.16s"></i>
+                  <i class="bulb" style="animation-delay:.24s"></i>
+                  <i class="bulb" style="animation-delay:.32s"></i>
+                  <i class="bulb" style="animation-delay:.4s"></i>
+                  <i class="bulb" style="animation-delay:.48s"></i>
+                  <i class="bulb" style="animation-delay:.56s"></i>
+                  <i class="bulb" style="animation-delay:.64s"></i>
+                  <i class="bulb" style="animation-delay:.72s"></i>
+                  <i class="bulb" style="animation-delay:.8s"></i>
+                  <i class="bulb" style="animation-delay:.88s"></i>
+                  <i class="bulb" style="animation-delay:.96s"></i>
+                  <i class="bulb" style="animation-delay:1.04s"></i>
+                </div>
+                <div class="marquee-sign">
+                  <b>LUCKY BEAN</b>
+                  <small>럭키 슬롯</small>
+                </div>
+                <div class="bulbs" aria-hidden="true">
+                  <i class="bulb" style="animation-delay:.12s"></i>
+                  <i class="bulb" style="animation-delay:.2s"></i>
+                  <i class="bulb" style="animation-delay:.28s"></i>
+                  <i class="bulb" style="animation-delay:.36s"></i>
+                  <i class="bulb" style="animation-delay:.44s"></i>
+                  <i class="bulb" style="animation-delay:.52s"></i>
+                  <i class="bulb" style="animation-delay:.6s"></i>
+                  <i class="bulb" style="animation-delay:.68s"></i>
+                  <i class="bulb" style="animation-delay:.76s"></i>
+                  <i class="bulb" style="animation-delay:.84s"></i>
+                  <i class="bulb" style="animation-delay:.92s"></i>
+                  <i class="bulb" style="animation-delay:1s"></i>
+                  <i class="bulb" style="animation-delay:1.08s"></i>
+                  <i class="bulb" style="animation-delay:1.16s"></i>
+                </div>
+              </div>
+              <div class="cabinet-row">
+                <div class="reel-bay">
+                  <div class="reels" id="reels">
+                    <div class="reel" id="reel-0"><div class="reel-window"><div class="reel-strip"></div><div class="glass"></div></div></div>
+                    <div class="reel" id="reel-1"><div class="reel-window"><div class="reel-strip"></div><div class="glass"></div></div></div>
+                    <div class="reel" id="reel-2"><div class="reel-window"><div class="reel-strip"></div><div class="glass"></div></div></div>
+                  </div>
+                  <div class="winline" id="win-line"></div>
+                </div>
+                <button type="button" id="btn-slot" class="lever" aria-label="레버 당기기">
+                  <span class="lever-hinge"></span>
+                  <span class="lever-stick">
+                    <span class="lever-arm"></span>
+                    <span class="lever-knob"></span>
+                  </span>
+                </button>
+              </div>
+              <p class="slot-meter" id="slot-meter">대기</p>
+              <div class="payboard" id="payboard"></div>
+              <button type="button" id="btn-slot-spin" class="spin-go">스핀</button>
+            </div>
+          </div>
+
+          <div id="stage-hilo" class="stage hidden">
+            <div class="hilo-card" id="hilo-card">7</div>
+            <div class="choice-row">
+              <button type="button" class="choice slim" data-hi="lo">낮다<small></small></button>
+              <button type="button" class="choice slim" data-hi="hi">높다<small></small></button>
+            </div>
+          </div>
+
           <div id="stage-ladder" class="stage hidden">
             <p class="hint">위에서 길을 고르면 사다리를 타고 내려가요. 당첨이면 3배!</p>
             <div class="ladder-wrap">
@@ -124,6 +204,7 @@
           </div>
 
           <p id="play-result" class="play-result hidden"></p>
+          <ol id="history" class="history"></ol>
           <div id="play-actions" class="actions hidden">
             <button id="btn-again" type="button">한 판 더</button>
             <button id="btn-leave" class="ghost" type="button">광장으로</button>
@@ -133,10 +214,22 @@
       </section>
 
       <section id="shop" class="overlay hidden">
-        <div class="panel play-panel">
-          <h2>꾸미기 상점</h2>
-          <p class="lead">번 콩알로 모자와 악세사리를 사서 콩을 꾸밀 수 있어요. 한 부위에는 하나만 착용돼요.</p>
-          <div id="shop-grid" class="shop-grid"></div>
+        <div class="panel play-panel shop-panel">
+          <div id="shop-fx" class="fx" aria-hidden="true"></div>
+          <div class="shop-head">
+            <h2>꾸미기 상점</h2>
+            <p class="lead">미리보기 콩이 지금 입은 모습이에요. 입어보기를 누르면 바로 돌아갑니다.</p>
+          </div>
+          <div class="shop-layout">
+            <aside class="shop-stage">
+              <canvas id="shop-preview"></canvas>
+              <p id="shop-caption">미리보기</p>
+            </aside>
+            <div class="shop-main">
+              <div id="shop-tabs" class="shop-tabs"></div>
+              <div id="shop-grid" class="shop-grid"></div>
+            </div>
+          </div>
           <div class="actions">
             <button id="btn-shop-close" class="ghost" type="button">광장으로</button>
           </div>
@@ -153,6 +246,12 @@
           </div>
         </div>
       </section>
+
+      <div id="celebrate" class="celebrate hidden" aria-hidden="true">
+        <div class="celebrate-burst"></div>
+        <p id="celebrate-banner">대박!</p>
+        <div id="celebrate-fx"></div>
+      </div>
 
       <div id="touch-ui" class="touch-ui hidden" aria-hidden="true">
         <div class="stick" id="stick">
