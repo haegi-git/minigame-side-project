@@ -1444,90 +1444,147 @@
     g.fill();
   }
 
+  function shipSail(g, x, y, w, h) {
+    g.fillStyle = "rgba(226, 240, 248, 0.92)";
+    g.strokeStyle = "#7eb8d0";
+    g.lineWidth = 1.6;
+    g.beginPath();
+    g.moveTo(x, y);
+    g.quadraticCurveTo(x + w * 0.72, y + h * 0.18, x + w, y + h * 0.42);
+    g.quadraticCurveTo(x + w * 0.55, y + h * 0.72, x, y + h);
+    g.closePath();
+    g.fill();
+    g.stroke();
+    g.strokeStyle = "rgba(90, 140, 168, 0.55)";
+    g.beginPath();
+    g.moveTo(x + 4, y + h * 0.28);
+    g.quadraticCurveTo(x + w * 0.45, y + h * 0.4, x + w * 0.82, y + h * 0.5);
+    g.moveTo(x + 4, y + h * 0.62);
+    g.quadraticCurveTo(x + w * 0.4, y + h * 0.7, x + w * 0.62, y + h * 0.74);
+    g.stroke();
+  }
+
   function farFort(g, x, y, s) {
     g.save();
     g.translate(x, y);
     g.scale(s, s);
-    g.fillStyle = "#1a2c44";
-    g.strokeStyle = "#9ad8f0";
-    g.lineWidth = 3;
+    g.fillStyle = "rgba(0, 0, 0, 0.28)";
     g.beginPath();
-    g.moveTo(-150, 6);
-    g.quadraticCurveTo(-118, 34, -40, 30);
-    g.lineTo(78, 26);
-    g.quadraticCurveTo(132, 20, 156, 0);
-    g.lineTo(148, -6);
-    g.quadraticCurveTo(110, -14, 48, -10);
-    g.lineTo(-78, -8);
-    g.quadraticCurveTo(-140, -6, -150, 6);
+    g.ellipse(8, 34, 132, 9, 0, 0, Math.PI * 2);
+    g.fill();
+
+    g.fillStyle = "#14283e";
+    g.strokeStyle = "#9ad4ea";
+    g.lineWidth = 2.4;
+    g.beginPath();
+    g.moveTo(-168, 2);
+    g.quadraticCurveTo(-158, 30, -70, 26);
+    g.quadraticCurveTo(40, 30, 128, 16);
+    g.quadraticCurveTo(168, 8, 188, -6);
+    g.lineTo(176, -14);
+    g.quadraticCurveTo(120, -22, 36, -16);
+    g.lineTo(-96, -14);
+    g.quadraticCurveTo(-150, -20, -172, -6);
     g.closePath();
     g.fill();
     g.stroke();
-    g.strokeStyle = "rgba(180,220,240,0.45)";
-    g.lineWidth = 2;
+
+    g.strokeStyle = "rgba(186, 224, 240, 0.45)";
+    g.lineWidth = 1.6;
     g.beginPath();
-    g.moveTo(-130, 2);
-    g.quadraticCurveTo(-40, 16, 120, -2);
+    g.moveTo(-150, 4);
+    g.quadraticCurveTo(10, 16, 160, -6);
     g.stroke();
-    g.fillStyle = "#243a58";
-    g.strokeStyle = "#b7e6f6";
-    g.lineWidth = 2;
-    roundRect(g, -18, -36, 78, 30, 5);
+
+    g.fillStyle = "#1c3c58";
+    g.strokeStyle = "#c5e8f6";
+    g.lineWidth = 1.8;
+    roundRect(g, -158, -38, 42, 28, 4);
     g.fill();
     g.stroke();
-    g.fillStyle = "#163044";
-    g.fillRect(8, -58, 16, 26);
+    roundRect(g, -28, -42, 78, 30, 5);
+    g.fill();
+    g.stroke();
+    g.fillStyle = "#102434";
+    g.fillRect(-8, -54, 36, 14);
+    g.strokeStyle = "#9ad4ea";
+    g.strokeRect(-8, -54, 36, 14);
+
+    g.fillStyle = "#ffe9a0";
+    [-146, -132, -16, -2, 12, 28].forEach((wx, i) => {
+      g.globalAlpha = 0.55 + (Math.sin(cam * 0.25 + i) * 0.5 + 0.5) * 0.45;
+      g.fillRect(wx, -30, 8, 6);
+    });
+    g.globalAlpha = 1;
+
+    g.strokeStyle = "#d7eef8";
+    g.lineWidth = 2;
+    g.beginPath();
+    g.moveTo(170, -12);
+    g.lineTo(214, -28);
+    g.stroke();
+    g.fillStyle = "#ffb15a";
+    g.beginPath();
+    g.arc(214, -28, 3.2, 0, Math.PI * 2);
+    g.fill();
+
     g.strokeStyle = "#d5e8f4";
-    g.lineWidth = 2;
+    g.lineWidth = 2.2;
     g.beginPath();
-    g.moveTo(16, -34);
-    g.lineTo(16, -86);
+    g.moveTo(-78, -14);
+    g.lineTo(-78, -108);
+    g.moveTo(18, -54);
+    g.lineTo(18, -118);
     g.stroke();
-    g.fillStyle = "rgba(214, 236, 246, 0.88)";
+    shipSail(g, -76, -102, 62, 58);
+    shipSail(g, 20, -112, 48, 46);
+    g.fillStyle = "#ff8fb8";
     g.beginPath();
-    g.moveTo(16, -82);
-    g.quadraticCurveTo(62, -68, 58, -40);
-    g.quadraticCurveTo(34, -52, 16, -44);
+    g.moveTo(-78, -108);
+    g.lineTo(-58, -100);
+    g.lineTo(-78, -92);
     g.closePath();
     g.fill();
-    g.strokeStyle = "#7ec8e4";
-    g.stroke();
+
     g.save();
-    g.translate(-78, -28);
-    g.rotate(cam * 0.18);
-    g.strokeStyle = "#d7f4ff";
-    g.lineWidth = 3;
-    g.lineCap = "round";
+    g.translate(-172, -2);
+    g.rotate(cam * 0.42);
+    g.strokeStyle = "#e7f6ff";
+    g.fillStyle = "rgba(190, 224, 240, 0.55)";
+    g.lineWidth = 2;
     for (let i = 0; i < 3; i++) {
       g.rotate((Math.PI * 2) / 3);
       g.beginPath();
-      g.moveTo(0, 0);
-      g.lineTo(34, 3);
+      g.moveTo(5, 0);
+      g.quadraticCurveTo(22, 8, 40, 2);
+      g.quadraticCurveTo(24, -6, 5, 0);
+      g.fill();
       g.stroke();
     }
     g.fillStyle = "#ffe066";
     g.beginPath();
-    g.arc(0, 0, 4, 0, Math.PI * 2);
+    g.arc(0, 0, 4.5, 0, Math.PI * 2);
     g.fill();
     g.restore();
-    g.fillStyle = "#101820";
-    g.fillRect(138, -4, 26, 7);
-    g.fillStyle = "#ff7a3c";
-    g.beginPath();
-    g.arc(162, -1, 3.5, 0, Math.PI * 2);
-    g.fill();
-    [-96, -48, 8, 52, 96].forEach((lx, i) => {
-      g.fillStyle = i % 2 ? "#9be7ff" : "#ffe066";
-      g.globalAlpha = 0.65 + Math.sin(cam * 0.22 + i) * 0.35;
+
+    g.fillStyle = "#0e1c28";
+    [-40, -8, 24, 56, 88, 120].forEach((px) => {
       g.beginPath();
-      g.arc(lx, 8, 3.2, 0, Math.PI * 2);
+      g.ellipse(px, 6, 5, 3.2, 0, 0, Math.PI * 2);
+      g.fill();
+    });
+    [-110, -60, -10, 40, 90, 140].forEach((lx, i) => {
+      g.fillStyle = i % 2 ? "#9be7ff" : "#ffe066";
+      g.globalAlpha = 0.6 + Math.sin(cam * 0.3 + i) * 0.4;
+      g.beginPath();
+      g.arc(lx, 12, 2.8, 0, Math.PI * 2);
       g.fill();
     });
     g.globalAlpha = 1;
-    g.fillStyle = "#8fd4ee";
-    g.fillRect(-8, -28, 10, 6);
-    g.fillRect(18, -28, 10, 6);
-    g.fillRect(40, -28, 10, 6);
+    g.fillStyle = "#ff5a3c";
+    g.beginPath();
+    g.arc(-164, 8, 3.4, 0, Math.PI * 2);
+    g.fill();
     g.restore();
   }
 
@@ -2178,7 +2235,6 @@
       g.beginPath();
       g.arc(0, 0, 108, 0, Math.PI * 2);
       g.fill();
-      toriiGate(g, 0, 48, 1.45);
       for (let i = 0; i < 6; i++) {
         const a = e.spin * 0.6 + i * 1.05;
         g.strokeStyle = i % 2 ? "#e23b2f" : "#fff1c4";
@@ -2303,7 +2359,7 @@
       }
       const fspan = W + 640;
       const fx = ((W * 0.7 - cam * 0.2) % fspan + fspan) % fspan - 200;
-      farFort(g, fx, H * 0.4, 1.05);
+      farFort(g, fx, H * 0.36, 1.18);
       seaBand(g, H * 0.62, 12, 0.02, 0.05, "#1d4e66");
       seaBand(g, H * 0.72, 16, 0.028, 0.09, "#18607a");
       seaBand(g, H * 0.84, 10, 0.04, 0.14, "#124858");
@@ -2351,9 +2407,12 @@
       }
       const hallX = ((W * 0.58 - cam * 0.24) % (W + 480) + (W + 480)) % (W + 480) - 140;
       haiden(g, hallX, H * 0.62, 1);
-      const gateSpace = 300;
-      let gx = -((cam * 0.45) % gateSpace) - 30;
-      for (; gx < W + gateSpace; gx += gateSpace) toriiGate(g, gx, H * 0.9, 1.15);
+      const gateSpace = 640;
+      let gx = -((cam * 0.22) % gateSpace) - 80;
+      g.save();
+      g.globalAlpha = 0.34;
+      for (; gx < W + gateSpace; gx += gateSpace) toriiGate(g, gx, H + 42, 0.68);
+      g.restore();
       let lx = -((cam * 0.55) % 220);
       for (; lx < W + 220; lx += 220) toro(g, lx + 40, H * 0.8, 0.85);
       const band = g.createLinearGradient(0, H * 0.46, 0, H * 0.7);
@@ -2591,37 +2650,42 @@
   let lastBox = "";
   let fieldCss = { x: 0, y: 0, w: 0, h: 0 };
   function resize() {
+    const stage = document.getElementById("stage");
     const coarse = window.matchMedia("(pointer: coarse)").matches || Math.min(window.innerWidth, window.innerHeight) < 760;
     const portrait = coarse && window.innerHeight > window.innerWidth * 1.05;
     document.body.classList.toggle("coarse", coarse);
-    document.body.classList.toggle("portrait", portrait);
+    document.body.classList.toggle("phone-tall", portrait);
     W = 960;
     H = 540;
-    const r = canvas.getBoundingClientRect();
+    const sr = stage ? stage.getBoundingClientRect() : canvas.getBoundingClientRect();
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const bw = Math.max(2, Math.floor(r.width * dpr));
-    const bh = Math.max(2, Math.floor(r.height * dpr));
+    const fit = Math.min(sr.width / W, sr.height / H);
+    const fw = Math.max(2, Math.floor(sr.width > 2 ? W * fit : 2));
+    const fh = Math.max(2, Math.floor(sr.height > 2 ? H * fit : 2));
+    if (canvas.style.width !== fw + "px") canvas.style.width = fw + "px";
+    if (canvas.style.height !== fh + "px") canvas.style.height = fh + "px";
+    const bw = Math.max(2, Math.floor(fw * dpr));
+    const bh = Math.max(2, Math.floor(fh * dpr));
     if (canvas.width !== bw) canvas.width = bw;
     if (canvas.height !== bh) canvas.height = bh;
-    const s = Math.min(canvas.width / W, canvas.height / H);
-    view.s = s;
-    view.ox = (canvas.width - W * s) / 2;
-    view.oy = (canvas.height - H * s) / 2;
+    view.s = canvas.width / W;
+    view.ox = 0;
+    view.oy = 0;
+    const cr = canvas.getBoundingClientRect();
     fieldCss = {
-      x: view.ox / dpr,
-      y: view.oy / dpr,
-      w: (W * s) / dpr,
-      h: (H * s) / dpr,
+      x: cr.left - sr.left,
+      y: cr.top - sr.top,
+      w: cr.width,
+      h: cr.height,
     };
-    const stage = document.getElementById("stage");
     if (stage) {
       stage.style.setProperty("--field-x", fieldCss.x + "px");
       stage.style.setProperty("--field-y", fieldCss.y + "px");
       stage.style.setProperty("--field-w", fieldCss.w + "px");
       stage.style.setProperty("--field-h", fieldCss.h + "px");
     }
-    const box = `${Math.round(r.width)}x${Math.round(r.height)}`;
-    if (box !== lastBox && r.width > 2 && r.height > 2) {
+    const box = `${Math.round(sr.width)}x${Math.round(sr.height)}`;
+    if (box !== lastBox && sr.width > 2 && sr.height > 2) {
       lastBox = box;
       for (const a of ambience) {
         a.x = Math.random() * W;
@@ -2808,7 +2872,7 @@
   });
 
   window.addEventListener("resize", resize);
-  if (window.ResizeObserver) new ResizeObserver(() => resize()).observe(canvas);
+  if (window.ResizeObserver) new ResizeObserver(() => resize()).observe(document.getElementById("stage"));
   buildPicks();
   resize();
   el.hi.textContent = fmt(hi);
@@ -2862,7 +2926,7 @@
         mid: !!(mid && mid.alive),
         enemyBullets: eb,
         coarse: document.body.classList.contains("coarse"),
-        portrait: document.body.classList.contains("portrait"),
+        portrait: document.body.classList.contains("phone-tall"),
         w: W, h: H,
         field: fieldCss,
       };
