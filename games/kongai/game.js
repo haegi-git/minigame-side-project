@@ -2832,10 +2832,10 @@
     for (const s of strikes) {
       if (s.t >= s.warn) continue;
       ctx.save();
-      ctx.globalAlpha = 0.35 + Math.sin(s.t * 42) * 0.35;
-      ctx.strokeStyle = "#ffe066";
-      ctx.lineWidth = 3;
-      ctx.setLineDash([10, 8]);
+      ctx.globalAlpha = 0.75 + Math.sin(s.t * 42) * 0.25;
+      ctx.strokeStyle = "#ffe98a";
+      ctx.lineWidth = 5;
+      ctx.setLineDash([16, 10]);
       ctx.beginPath();
       ctx.moveTo(s.x, 0);
       ctx.lineTo(s.x, H);
@@ -3545,7 +3545,16 @@
     },
     power(n) {
       if (mode !== "play") this.start(player.charId || "ninja", stageIndex);
-      player.power = clamp(Number(n) || 0, 0, 4);
+      const next = clamp(Number(n) || 0, 0, 4);
+      const prev = player.power;
+      player.power = next;
+      if (next > prev) {
+        const maxed = next >= 4;
+        popup(player.x, player.y - 46, maxed ? "MAX POWER!" : "POWER UP!", "#ffe066", true);
+        player.aura = 0.55;
+        flash = 0.35;
+        sfx.power();
+      }
       syncHud(true);
     },
     bomb() { useBomb(); },
