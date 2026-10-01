@@ -32,6 +32,7 @@
         <div class="hud-card">
           <p class="rank"><span id="rank">1</span><small>/8</small></p>
           <p class="time" id="time">0:00.0</p>
+          <p class="map-now" id="hud-map">콩밭 서킷</p>
         </div>
         <div class="progress-wrap">
           <div id="progress" class="progress"></div>
@@ -48,7 +49,10 @@
         <div class="panel">
           <p class="kicker">심심타임</p>
           <h1>빈런</h1>
-          <p class="lead">말랑콩 8명이 장애물을 넘어 골인까지 달려요. 약 1분, AI와 함께하는 미니 폴가이즈!</p>
+          <p class="lead">말랑콩 8명이 장애물을 넘어 골인까지 달려요. 코스 4개, 약 1분.</p>
+          <div id="map-list" class="map-list"></div>
+          <p class="map-help kb-only">← → 코스 선택 · Enter 시작</p>
+          <p class="map-help touch-only">코스를 눌러 고르세요</p>
           <ul class="controls">
             <li class="kb-only"><kbd>W A S D</kbd> 또는 <kbd>↑ ← ↓ →</kbd> 이동 · 달리기</li>
             <li class="kb-only"><kbd>Space</kbd> 점프</li>
@@ -85,6 +89,7 @@
           <ol id="board" class="board"></ol>
           <div class="actions">
             <button id="btn-retry" type="button">한 판 더</button>
+            <button id="btn-maps" type="button" class="ghost">다른 코스</button>
             <a class="ghost" href="../../index.html">로비로</a>
           </div>
         </div>
