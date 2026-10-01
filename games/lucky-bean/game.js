@@ -1591,10 +1591,7 @@ function buyItem(item) {
   updateHud();
   sfx.win();
   boughtFlash = item.id;
-  spawnCoins(18, "shop-fx");
-  shopEl.classList.remove("just-bought");
-  void shopEl.offsetWidth;
-  shopEl.classList.add("just-bought");
+  spawnCoins(22, "shop-fx");
   renderShop();
   if (maybeEnd()) return;
 }

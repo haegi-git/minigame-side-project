@@ -163,8 +163,33 @@ button,
   position: relative;
 }
 
-#shop.just-bought .shop-panel {
-  animation: bannerin 0.35s ease;
+.shop-item.bought .shop-art::after {
+  content: "구매!";
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  top: 46%;
+  font-family: "Jua", sans-serif;
+  font-size: 28px;
+  color: var(--ink);
+  background: var(--lemon);
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  padding: 2px 12px;
+  animation: buytag 1s ease forwards;
+  pointer-events: none;
+}
+
+@keyframes buytag {
+  0% { opacity: 0; transform: translate(-50%, -20%) scale(0.6); }
+  18% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); }
+  62% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -80%) scale(1); }
+}
+
+.shop-panel .coin {
+  width: 18px;
+  height: 18px;
 }
 
 .kicker {
