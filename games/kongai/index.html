@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>콩가이 - 심심타임</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🫘</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="../../css/lupin.css" />
+  </head>
+  <body>
+    <div id="game-root">
+      <canvas id="view"></canvas>
+      <a class="back" href="../../index.html">← 게임 선택</a>
+      <button id="mute" class="mute" type="button" aria-label="소리 끄기">🔊</button>
+
+      <div id="hud" class="hud hidden">
+        <div class="hud-top">
+          <p>SCORE <b id="score">0</b></p>
+          <p>HI <b id="hi">0</b></p>
+        </div>
+        <div id="boss-hud" class="boss-hud hidden">
+          <p id="boss-name">보스</p>
+          <div class="boss-track"><div id="boss-fill"></div></div>
+        </div>
+        <div class="hud-bot">
+          <p id="lives" class="pips"></p>
+          <p id="bombs" class="pips"></p>
+          <p id="power" class="pips"></p>
+          <div class="charge" aria-hidden="true"><div id="charge-fill"></div></div>
+        </div>
+        <p id="hint" class="hint kb-only">방향키 이동 · Z 발사 · 길게 눌러 차지 · X 폭탄 · Shift 집중</p>
+        <p class="hint touch-only">드래그로 이동 · 자동 발사 · 집중을 누르면 느려져요</p>
+      </div>
+
+      <div id="banner" class="banner hidden">
+        <small id="banner-k"></small>
+        <b id="banner-t"></b>
+      </div>
+
+      <section id="title" class="overlay">
+        <div class="sheet title-sheet">
+          <p class="kicker">심심타임</p>
+          <h1>콩가이</h1>
+          <p class="lead">가로로 흐르는 전국 탄막. 닌자·무녀·사무라이 콩이 성읍과 요새, 신사를 가로지릅니다.</p>
+          <div id="char-row" class="char-row" role="radiogroup" aria-label="캐릭터"></div>
+          <div id="stage-row" class="stage-row" role="radiogroup" aria-label="스테이지"></div>
+          <ul class="controls">
+            <li class="kb-only"><kbd>← → ↑ ↓</kbd> 이동</li>
+            <li class="kb-only"><kbd>Z</kbd> / <kbd>Space</kbd> 발사 · 길게 눌러 차지</li>
+            <li class="kb-only"><kbd>X</kbd> 폭탄 · <kbd>Shift</kbd> 집중</li>
+            <li class="touch-only">화면을 드래그해 이동하면 자동으로 발사해요</li>
+            <li class="touch-only">폭탄과 집중 버튼은 화면 아래에 있어요</li>
+          </ul>
+          <button id="btn-start" type="button">출격</button>
+        </div>
+      </section>
+
+      <section id="panel" class="overlay hidden">
+        <div class="sheet">
+          <p class="kicker" id="panel-kicker">콩가이</p>
+          <h2 id="panel-title">스테이지 클리어</h2>
+          <p class="lead" id="panel-sub"></p>
+          <ul id="panel-stats" class="stats"></ul>
+          <div class="actions">
+            <button id="btn-next" type="button">다음 스테이지</button>
+            <button id="btn-retry" type="button" class="ghost">다시</button>
+            <button id="btn-title" type="button" class="ghost">타이틀</button>
+          </div>
+        </div>
+      </section>
+
+      <div id="touch" class="touch" aria-hidden="true">
+        <button id="btn-focus" type="button">집중</button>
+        <button id="btn-bomb" type="button">폭탄</button>
+      </div>
+    </div>
+    <script src="./game.js"></script>
+    <script src="../../js/lupin.js" defer></script>
+  </body>
+</html>
