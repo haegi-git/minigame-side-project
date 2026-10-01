@@ -57,6 +57,8 @@
           const a = (i - (n - 1) / 2) * spread;
           shot(p.x + 18, p.y, a, 860, r, 1, color, "shuriken", lvl >= 3 ? 2 : 1);
         }
+        const core = lvl >= 4 ? 3 : lvl >= 2 ? 2 : 1;
+        shot(p.x + 22, p.y, 0, 920, Math.max(4, r * 0.8), core, "#fff", "shuriken", 2);
       },
       charge(p) {
         for (let i = 0; i < 12; i++) {
@@ -81,7 +83,7 @@
       blurb: "유도 부적과 도는 태극 구슬.",
       bombName: "도리이 정화",
       speed: 280,
-      rate: 0.13,
+      rate: 0.108,
       bars: { spd: 3, pow: 3, rng: 4 },
       shot(p, lvl) {
         if (lvl < 1) {
@@ -124,12 +126,12 @@
           return;
         }
         const r = 7 + lvl * 2.4;
-        const dmg = lvl >= 4 ? 4 : 3;
+        const dmg = lvl >= 3 ? 4 : 3;
         const color = lvl >= 4 ? "#fffef2" : "#fff3b0";
-        shot(p.x + 26, p.y, 0, 640, r, dmg, color, "slash", 2);
+        shot(p.x + 26, p.y, 0, 780, r, dmg, color, "slash", 2);
         if (lvl >= 2) {
-          shot(p.x + 18, p.y - 6, -0.05, 600, r * 0.72, 2, "#ffe066", "slash", 2);
-          shot(p.x + 18, p.y + 6, 0.05, 600, r * 0.72, 2, "#ffe066", "slash", 2);
+          shot(p.x + 18, p.y - 6, -0.05, 740, r * 0.72, 2, "#ffe066", "slash", 2);
+          shot(p.x + 18, p.y + 6, 0.05, 740, r * 0.72, 2, "#ffe066", "slash", 2);
         }
         if (lvl >= 4) shot(p.x + 30, p.y, 0, 980, 5, 2, "#fff", "knife", 2);
       },
@@ -939,7 +941,7 @@
 
   function patternGuardian(e, dt) {
     const gapH = Math.max(130, H * 0.2);
-    e.phased = e.phase >= 2 && Math.sin(e.t * 2.1) > 0.62;
+    e.phased = e.phase >= 2 && Math.sin(e.t * 2.1) > 0.93;
     if (e.phase === 1) {
       e.cd1 -= dt * 0.88;
       if (e.cd1 <= 0) {
