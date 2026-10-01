@@ -322,14 +322,34 @@ export function makePart(id) {
   if (id === "fairy") {
     const g = group(id);
     for (const s of [-1, 1]) {
-      const wing = M(new THREE.SphereGeometry(0.32, 10, 8), 0xd7b4ff, s * 0.46, 0.2, -0.15, {
+      const wing = new THREE.Group();
+      wing.position.set(s * 0.12, 0.22, -0.08);
+      wing.rotation.z = s * -0.55;
+      wing.rotation.y = s * 0.35;
+      const glass = {
         transparent: true,
-        opacity: 0.72,
-        emissive: 0xc084fc,
-        emissiveIntensity: 0.45,
-        roughness: 0.1,
+        opacity: 0.82,
+        emissive: 0xd8b4fe,
+        emissiveIntensity: 0.55,
+        roughness: 0.08,
+        metalness: 0.05,
+        side: THREE.DoubleSide,
+      };
+      const upper = M(new THREE.SphereGeometry(0.26, 14, 10), 0xf3e8ff, s * 0.34, 0.22, 0, glass);
+      upper.scale.set(1.15, 1.55, 0.08);
+      const lower = M(new THREE.SphereGeometry(0.18, 12, 8), 0xffe4fb, s * 0.26, -0.16, 0.01, {
+        ...glass,
+        emissive: 0xff9de0,
+        emissiveIntensity: 0.4,
+        opacity: 0.74,
       });
-      wing.scale.set(0.22, 1.15, 0.7);
+      lower.scale.set(1.05, 1.25, 0.07);
+      const vein = M(new THREE.BoxGeometry(0.015, 0.62, 0.02), 0xfff7ff, s * 0.22, 0.04, 0.03, {
+        emissive: 0xffffff,
+        emissiveIntensity: 0.35,
+      });
+      vein.rotation.z = s * -0.15;
+      wing.add(upper, lower, vein);
       g.add(wing);
     }
     return g;

@@ -123,35 +123,64 @@
           <div id="stage-slot" class="stage hidden">
             <div class="cabinet" id="cabinet">
               <div class="marquee">
-                <i class="lamp"></i><i class="lamp"></i><i class="lamp"></i>
-                <b>럭키 슬롯</b>
-                <i class="lamp"></i><i class="lamp"></i><i class="lamp"></i>
+                <div class="bulbs" aria-hidden="true">
+                  <i class="bulb" style="animation-delay:0s"></i>
+                  <i class="bulb" style="animation-delay:.08s"></i>
+                  <i class="bulb" style="animation-delay:.16s"></i>
+                  <i class="bulb" style="animation-delay:.24s"></i>
+                  <i class="bulb" style="animation-delay:.32s"></i>
+                  <i class="bulb" style="animation-delay:.4s"></i>
+                  <i class="bulb" style="animation-delay:.48s"></i>
+                  <i class="bulb" style="animation-delay:.56s"></i>
+                  <i class="bulb" style="animation-delay:.64s"></i>
+                  <i class="bulb" style="animation-delay:.72s"></i>
+                  <i class="bulb" style="animation-delay:.8s"></i>
+                  <i class="bulb" style="animation-delay:.88s"></i>
+                  <i class="bulb" style="animation-delay:.96s"></i>
+                  <i class="bulb" style="animation-delay:1.04s"></i>
+                </div>
+                <div class="marquee-sign">
+                  <b>LUCKY BEAN</b>
+                  <small>럭키 슬롯</small>
+                </div>
+                <div class="bulbs" aria-hidden="true">
+                  <i class="bulb" style="animation-delay:.12s"></i>
+                  <i class="bulb" style="animation-delay:.2s"></i>
+                  <i class="bulb" style="animation-delay:.28s"></i>
+                  <i class="bulb" style="animation-delay:.36s"></i>
+                  <i class="bulb" style="animation-delay:.44s"></i>
+                  <i class="bulb" style="animation-delay:.52s"></i>
+                  <i class="bulb" style="animation-delay:.6s"></i>
+                  <i class="bulb" style="animation-delay:.68s"></i>
+                  <i class="bulb" style="animation-delay:.76s"></i>
+                  <i class="bulb" style="animation-delay:.84s"></i>
+                  <i class="bulb" style="animation-delay:.92s"></i>
+                  <i class="bulb" style="animation-delay:1s"></i>
+                  <i class="bulb" style="animation-delay:1.08s"></i>
+                  <i class="bulb" style="animation-delay:1.16s"></i>
+                </div>
               </div>
               <div class="cabinet-row">
                 <div class="reel-bay">
                   <div class="reels" id="reels">
-                    <div class="reel" id="reel-0"><div class="reel-window"><div class="reel-strip"></div></div></div>
-                    <div class="reel" id="reel-1"><div class="reel-window"><div class="reel-strip"></div></div></div>
-                    <div class="reel" id="reel-2"><div class="reel-window"><div class="reel-strip"></div></div></div>
+                    <div class="reel" id="reel-0"><div class="reel-window"><div class="reel-strip"></div><div class="glass"></div></div></div>
+                    <div class="reel" id="reel-1"><div class="reel-window"><div class="reel-strip"></div><div class="glass"></div></div></div>
+                    <div class="reel" id="reel-2"><div class="reel-window"><div class="reel-strip"></div><div class="glass"></div></div></div>
                   </div>
                   <div class="winline" id="win-line"></div>
                 </div>
                 <button type="button" id="btn-slot" class="lever" aria-label="레버 당기기">
-                  <span class="lever-arm"></span>
-                  <span class="lever-knob"></span>
+                  <span class="lever-hinge"></span>
+                  <span class="lever-stick">
+                    <span class="lever-arm"></span>
+                    <span class="lever-knob"></span>
+                  </span>
                 </button>
               </div>
-              <p class="jackpot-banner">잭팟!</p>
+              <p class="slot-meter" id="slot-meter">대기</p>
+              <div class="payboard" id="payboard"></div>
+              <button type="button" id="btn-slot-spin" class="spin-go">스핀</button>
             </div>
-            <ul class="paytable">
-              <li>꽝 60%</li>
-              <li>페어 환급 22%</li>
-              <li>콩 3개 11% · 2배</li>
-              <li>별 3개 4.5% · 4배</li>
-              <li>하트 3개 1.8% · 8배</li>
-              <li>보석 3개 0.5% · 15배</li>
-              <li>왕관 3개 0.2% · 40배</li>
-            </ul>
           </div>
 
           <div id="stage-hilo" class="stage hidden">
@@ -217,6 +246,12 @@
           </div>
         </div>
       </section>
+
+      <div id="celebrate" class="celebrate hidden" aria-hidden="true">
+        <div class="celebrate-burst"></div>
+        <p id="celebrate-banner">대박!</p>
+        <div id="celebrate-fx"></div>
+      </div>
 
       <div id="touch-ui" class="touch-ui hidden" aria-hidden="true">
         <div class="stick" id="stick">

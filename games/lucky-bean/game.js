@@ -700,12 +700,20 @@ function showBetUI() {
   pendingBet = 0;
   ensureBetButtons();
   renderBetUI();
+  const slot = currentGame?.id === "slot";
+  playEl.classList.toggle("slot-live", slot);
+  if (slot) {
+    document.getElementById("stage-slot")?.classList.remove("hidden");
+    setupSlot();
+  }
 }
 
 function openStall(stall) {
   sfx.boot();
   sfx.click();
   if (stall.id === "shop") {
+    playEl.classList.add("hidden");
+    playEl.classList.remove("slot-live");
     shopEl.classList.remove("hidden");
     phase = "shop";
     renderShop();
@@ -718,6 +726,11 @@ function openStall(stall) {
     setNear(null);
     return;
   }
+  shopEl.classList.add("hidden");
+  if (trying) {
+    trying = null;
+    if (player.mesh) applyLook(player.mesh);
+  }
   currentGame = stall;
   playEl.classList.remove("hidden");
   phase = "minigame";
@@ -729,7 +742,10 @@ function openStall(stall) {
 
 function closePlay() {
   playEl.classList.add("hidden");
+  playEl.classList.remove("slot-live");
   shopEl.classList.add("hidden");
+  document.getElementById("celebrate")?.classList.add("hidden");
+  document.getElementById("game-root")?.classList.remove("screen-shake", "near-shake");
   if (trying) {
     trying = null;
     if (player.mesh) applyLook(player.mesh);
@@ -802,6 +818,7 @@ function startRound(bet) {
   cancel.classList.remove("hidden");
   cancel.textContent = "포기하기";
   hideStages();
+  playEl.classList.toggle("slot-live", currentGame.id === "slot");
   sfx.click();
   if (currentGame.id === "rps") {
     document.getElementById("stage-rps").classList.remove("hidden");
@@ -1113,101 +1130,216 @@ function drawSymbol(id) {
   return c.toDataURL("image/png");
 }
 
-function reelCell() {
-  const reel = document.querySelector("#stage-slot .reel-window");
-  const h = reel ? reel.clientHeight : 0;
-  return h > 10 ? h : 90;
-}
-
 function symCell(id) {
-  return `<div class="sym"><img alt="" src="${symbolUrl(id)}" draggable="false"></div>`;
+  return `<div class="sym" data-sym="${id}"><img alt="" src="${symbolUrl(id)}" draggable="false"></div>`;
 }
 
-function paintReel(reel, ids) {
+function randSym() {
+  return SLOT_SYMS[Math.floor(Math.random() * SLOT_SYMS.length)];
+}
+
+function renderPayboard() {
+  const host = document.getElementById("payboard");
+  if (!host || host.childElementCount) return;
+  const rows = [
+    ["crown", "왕관 3개", "0.2% · 40배"],
+    ["gem", "보석 3개", "0.5% · 15배"],
+    ["heart", "하트 3개", "1.8% · 8배"],
+    ["star", "별 3개", "4.5% · 4배"],
+    ["bean", "콩 3개", "11% · 2배"],
+    ["pair", "페어", "22% · 환급"],
+    ["miss", "꽝", "60%"],
+  ];
+  host.innerHTML = rows
+    .map(([id, name, odds]) => {
+      const icon = SLOT_SYMS.includes(id)
+        ? `<img alt="" src="${symbolUrl(id)}">`
+        : `<b class="pay-mark">${id === "miss" ? "×" : "2"}</b>`;
+      return `<div class="pay-row"><span class="pay-ico">${icon}</span><span>${name}</span><em>${odds}</em></div>`;
+    })
+    .join("");
+}
+
+function placeStrip(strip, index, cell, pad) {
+  const y = index * cell - pad;
+  strip.style.transform = `translate3d(0, ${-y}px, 0)`;
+}
+
+function reelMetrics(reel) {
+  const win = reel.querySelector(".reel-window");
+  const sym = reel.querySelector(".sym");
+  const cell = sym?.getBoundingClientRect().height || 108;
+  const view = win?.clientHeight || cell * 2.42;
+  const pad = Math.max(0, (view - cell) / 2);
+  return { cell, pad };
+}
+
+function paintReel(reel, ids, centerIndex) {
   const strip = reel.querySelector(".reel-strip");
   if (!strip) return;
   strip.innerHTML = ids.map(symCell).join("");
   strip.style.transition = "none";
-  strip.style.transform = "translate3d(0,0,0)";
+  const { cell, pad } = reelMetrics(reel);
+  placeStrip(strip, centerIndex, cell, pad);
 }
 
 function setupSlot() {
   const cabinet = document.getElementById("cabinet");
-  cabinet?.classList.remove("win", "jackpot", "tease", "pulling");
+  cabinet?.classList.remove("win", "jackpot", "tease", "pulling", "miss");
+  renderPayboard();
+  const meter = document.getElementById("slot-meter");
+  if (meter) {
+    meter.textContent = "대기";
+    meter.classList.remove("win", "lose");
+  }
   const idle = ["bean", "star", "heart"];
   for (let i = 0; i < 3; i++) {
     const reel = document.getElementById(`reel-${i}`);
     if (!reel) continue;
     reel.classList.remove("spinning", "anticipate", "landed");
-    paintReel(reel, [idle[i]]);
+    paintReel(reel, [randSym(), idle[i], randSym()], 1);
   }
   const btn = document.getElementById("btn-slot");
+  const go = document.getElementById("btn-slot-spin");
   if (btn) btn.disabled = false;
+  if (go) go.disabled = false;
 }
 
-async function spinOneReel(index, finalSym, duration, anticipate) {
+function celebrateSlot(kind) {
+  const el = document.getElementById("celebrate");
+  const banner = document.getElementById("celebrate-banner");
+  const fx = document.getElementById("celebrate-fx");
+  if (!el || !fx) return;
+  if (banner) banner.textContent = kind === "jackpot" ? "잭팟!" : "대박!";
+  el.classList.remove("hidden", "jackpot");
+  if (kind === "jackpot") el.classList.add("jackpot");
+  fx.innerHTML = "";
+  for (let i = 0; i < 56; i++) {
+    const bit = document.createElement("i");
+    bit.className = i % 3 === 0 ? "confetti coinbit" : "confetti";
+    bit.style.left = `${Math.random() * 100}%`;
+    bit.style.animationDelay = `${Math.random() * 0.35}s`;
+    bit.style.setProperty("--hue", String((Math.random() * 360) | 0));
+    bit.style.setProperty("--drift", `${(Math.random() - 0.5) * 280}px`);
+    fx.appendChild(bit);
+  }
+  document.getElementById("game-root")?.classList.add("screen-shake");
+  setTimeout(() => {
+    el.classList.add("hidden");
+    document.getElementById("game-root")?.classList.remove("screen-shake");
+  }, 2800);
+}
+
+async function countMeter(amount) {
+  const el = document.getElementById("slot-meter");
+  if (!el) return;
+  el.classList.remove("win", "lose");
+  if (amount <= 0) {
+    el.textContent = "꽝";
+    el.classList.add("lose");
+    return;
+  }
+  el.classList.add("win");
+  const dur = amount >= currentBet * 8 ? 1100 : 620;
+  const t0 = performance.now();
+  while (performance.now() - t0 < dur) {
+    const k = (performance.now() - t0) / dur;
+    const eased = 1 - (1 - k) ** 3;
+    el.textContent = `+${format(Math.round(amount * eased))}`;
+    await wait(32);
+  }
+  el.textContent = `+${format(amount)}`;
+}
+
+async function spinOneReel(index, finalSym, duration, anticipate, peek) {
   const reel = document.getElementById(`reel-${index}`);
   const strip = reel.querySelector(".reel-strip");
-  const cell = reelCell();
-  const steps = anticipate ? 18 : 9 + index * 3;
+  const steps = anticipate ? 16 : 8 + index * 3;
   const ids = [];
-  for (let n = 0; n < steps; n++) ids.push(SLOT_SYMS[Math.floor(Math.random() * SLOT_SYMS.length)]);
+  for (let n = 0; n < steps; n++) ids.push(randSym());
   ids.push(finalSym);
+  ids.push(peek || randSym());
   strip.innerHTML = ids.map(symCell).join("");
   strip.style.transition = "none";
-  strip.style.transform = "translate3d(0,0,0)";
   reel.classList.remove("landed");
   reel.classList.add("spinning");
   if (anticipate) reel.classList.add("anticipate");
   void strip.offsetHeight;
-  const measured = strip.querySelector(".sym")?.getBoundingClientRect().height || cell;
-  const travel = steps * measured;
-  const ease = anticipate ? "cubic-bezier(0.07, 0.78, 0.16, 1.08)" : "cubic-bezier(0.16, 0.72, 0.18, 1.16)";
+  const { cell, pad } = reelMetrics(reel);
+  placeStrip(strip, 0, cell, pad);
+  void strip.offsetHeight;
+  const ease = anticipate ? "cubic-bezier(0.05, 0.82, 0.12, 1.12)" : "cubic-bezier(0.12, 0.7, 0.14, 1.22)";
   strip.style.transition = `transform ${duration}ms ${ease}`;
-  strip.style.transform = `translate3d(0, ${-travel}px, 0)`;
-  const sharpAt = anticipate ? duration * 0.58 : Math.max(0, duration - 180);
+  placeStrip(strip, steps, cell, pad);
+  const sharpAt = anticipate ? duration * 0.55 : Math.max(0, duration - 200);
   await wait(sharpAt);
   reel.classList.remove("spinning");
   await wait(duration - sharpAt);
   reel.classList.remove("anticipate");
   reel.classList.add("landed");
   sfx.clack();
+  return steps;
 }
 
 async function spinSlot() {
   if (busy || roundOver || currentGame?.id !== "slot") return;
   busy = true;
   const btn = document.getElementById("btn-slot");
+  const go = document.getElementById("btn-slot-spin");
   if (btn) btn.disabled = true;
+  if (go) go.disabled = true;
   const cabinet = document.getElementById("cabinet");
-  cabinet?.classList.remove("win", "jackpot", "tease");
+  cabinet?.classList.remove("win", "jackpot", "tease", "miss", "pulling");
+  const meter = document.getElementById("slot-meter");
+  if (meter) {
+    meter.textContent = "돌아가요";
+    meter.classList.remove("win", "lose");
+  }
   const row = rollSlot();
   const faces = slotFaces(row);
   cabinet?.classList.add("pulling");
   sfx.lever();
-  await wait(260);
-  cabinet?.classList.remove("pulling");
+  await wait(240);
 
   const anticipate = faces[0] === faces[1];
-  const durations = [920, 1460, anticipate ? 2680 : 1960];
+  const durations = [1100, 1680, anticipate ? 2920 : 2140];
   let ticking = true;
   const ticks = (async () => {
     const start = performance.now();
     while (ticking && performance.now() - start < durations[2] - 40) {
       const t = (performance.now() - start) / durations[2];
-      const slow = anticipate && t > 0.52;
+      const slow = anticipate && t > 0.5;
       if (slow) cabinet?.classList.add("tease");
       sfx.tick(slow);
-      await wait(slow ? 80 + (t - 0.52) * 280 : 54);
+      await wait(slow ? 90 + (t - 0.5) * 300 : 58);
     }
   })();
-  await Promise.all([0, 1, 2].map((i) => spinOneReel(i, faces[i], durations[i], i === 2 && anticipate)));
+  const peeks = faces.map((face, i) => {
+    if (i === 2 && row.mult <= 0) return faces[0];
+    let other = randSym();
+    while (other === face) other = randSym();
+    return other;
+  });
+  const landed = await Promise.all(
+    [0, 1, 2].map((i) => spinOneReel(i, faces[i], durations[i], i === 2 && anticipate, peeks[i]))
+  );
   ticking = false;
   await ticks;
-  cabinet?.classList.remove("tease");
+  cabinet?.classList.remove("tease", "pulling");
   if (row.mult > 0) {
     cabinet?.classList.add("win");
-    if (row.mult >= 15) cabinet?.classList.add("jackpot");
+    landed.forEach((steps, i) => {
+      const reel = document.getElementById(`reel-${i}`);
+      reel?.querySelectorAll(".sym")[steps]?.classList.add("pay");
+    });
+    const won = Math.round(currentBet * row.mult);
+    if (row.mult >= 8) celebrateSlot(row.mult >= 15 ? "jackpot" : "big");
+    await countMeter(won);
+  } else {
+    cabinet?.classList.add("miss");
+    document.getElementById("game-root")?.classList.add("near-shake");
+    setTimeout(() => document.getElementById("game-root")?.classList.remove("near-shake"), 360);
+    await countMeter(0);
   }
   if (row.mult <= 0) payout(0, "그림이 어긋났어요...", false);
   else if (row.mult === 1) payout(1, `페어! 건 돈 ${format(currentBet)}을 돌려받아요`, true);
@@ -1808,7 +1940,39 @@ document.querySelectorAll("[data-rps]").forEach((b) => {
   b.addEventListener("click", () => playRps(Number(b.dataset.rps)));
 });
 document.getElementById("btn-spin").addEventListener("click", () => spinWheel());
-document.getElementById("btn-slot")?.addEventListener("click", () => spinSlot());
+document.getElementById("btn-slot-spin")?.addEventListener("click", () => spinSlot());
+(function bindLever() {
+  const lever = document.getElementById("btn-slot");
+  if (!lever) return;
+  let startY = 0;
+  let drag = 0;
+  let active = false;
+  lever.addEventListener("pointerdown", (e) => {
+    if (lever.disabled || busy) return;
+    active = true;
+    startY = e.clientY;
+    drag = 0;
+    lever.setPointerCapture?.(e.pointerId);
+  });
+  lever.addEventListener("pointermove", (e) => {
+    if (!active) return;
+    drag = e.clientY - startY;
+    lever.style.setProperty("--pull", String(Math.max(0, Math.min(64, drag * 0.45))));
+  });
+  const end = () => {
+    if (!active) return;
+    active = false;
+    const pulled = drag > 42;
+    const tapped = Math.abs(drag) < 14;
+    lever.style.setProperty("--pull", "0");
+    if (pulled || tapped) spinSlot();
+  };
+  lever.addEventListener("pointerup", end);
+  lever.addEventListener("pointercancel", () => {
+    active = false;
+    lever.style.setProperty("--pull", "0");
+  });
+})();
 document.querySelectorAll("[data-hi]").forEach((b) => {
   b.addEventListener("click", () => playHilo(b.dataset.hi));
 });
