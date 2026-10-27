@@ -374,6 +374,7 @@
     judge: document.getElementById("judge-pop"),
     mile: document.getElementById("mile"),
     now: document.getElementById("now-playing"),
+    startError: document.getElementById("start-error"),
     mute: document.getElementById("mute"),
     touch: document.getElementById("touch-lanes"),
     resRank: document.getElementById("res-rank"),
@@ -445,40 +446,60 @@
     return node;
   }
 
+  function liveTime(actx, t) {
+    return Number.isFinite(t) && t >= 0 && t >= actx.currentTime;
+  }
+
   function gainEnv(actx, dest, t, peak, attack, dur) {
+    if (!liveTime(actx, t)) return null;
     const g = actx.createGain();
     g.connect(dest);
     const a = Math.max(0.004, attack);
+    const peakAt = Math.max(t + a, actx.currentTime);
+    const endAt = Math.max(t + Math.max(dur, a + 0.01), peakAt + 0.01);
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), t + a);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(dur, a + 0.01));
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), peakAt);
+    g.gain.exponentialRampToValueAtTime(0.0001, endAt);
     return g;
   }
 
   function tone(actx, dest, t, freq, dur, type, peak, slide) {
-    const o = track(actx.createOscillator());
-    o.type = type;
-    o.frequency.setValueAtTime(Math.max(30, freq), t);
-    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, slide), t + dur);
-    const g = gainEnv(actx, dest, t, peak, 0.008, dur);
-    o.connect(g);
-    o.start(t);
-    o.stop(t + dur + 0.02);
+    if (!liveTime(actx, t)) return;
+    try {
+      const o = track(actx.createOscillator());
+      o.type = type;
+      o.frequency.setValueAtTime(Math.max(30, freq), t);
+      if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, slide), t + Math.max(dur, 0.01));
+      const g = gainEnv(actx, dest, t, peak, 0.008, dur);
+      if (!g) return;
+      o.connect(g);
+      o.start(t);
+      o.stop(t + dur + 0.02);
+    } catch (err) { /* one late voice must not cancel the song */ }
   }
 
   function burst(actx, dest, t, dur, peak, hp) {
-    const src = track(actx.createBufferSource());
-    src.buffer = noiseBuffer(actx);
-    const filter = actx.createBiquadFilter();
-    filter.type = hp ? "highpass" : "bandpass";
-    filter.frequency.value = hp ? 5000 : 1400;
-    filter.Q.value = hp ? 0.7 : 0.8;
-    src.connect(filter);
-    const g = gainEnv(actx, dest, t, peak, 0.004, dur);
-    filter.connect(g);
-    const off = (t * 17) % (src.buffer.duration - dur - 0.05);
-    src.start(t, Math.max(0, off), dur + 0.02);
-    src.stop(t + dur + 0.03);
+    if (!liveTime(actx, t)) return;
+    try {
+      const src = track(actx.createBufferSource());
+      const buf = noiseBuffer(actx);
+      src.buffer = buf;
+      const filter = actx.createBiquadFilter();
+      filter.type = hp ? "highpass" : "bandpass";
+      filter.frequency.value = hp ? 5000 : 1400;
+      filter.Q.value = hp ? 0.7 : 0.8;
+      src.connect(filter);
+      const g = gainEnv(actx, dest, t, peak, 0.004, dur);
+      if (!g) return;
+      filter.connect(g);
+      const play = Math.min(dur + 0.02, Math.max(0.01, buf.duration - 0.03));
+      const span = buf.duration - play - 0.01;
+      let off = span > 0 ? (t * 17) % span : 0;
+      if (!Number.isFinite(off) || off < 0) off = 0;
+      if (off + play > buf.duration) off = Math.max(0, buf.duration - play - 0.005);
+      src.start(t, off, play);
+      src.stop(t + dur + 0.03);
+    } catch (err) { /* one late hit must not cancel the song */ }
   }
 
   function scheduleImpulse(actx, dest, t) {
@@ -503,7 +524,8 @@
     const leadPool = mood === "matsuri" ? [69, 72, 74, 76, 79, 76, 74, 72] : mood === "dnb" ? [60, 63, 67, 70, 67, 63, 58, 63] : [72, 74, 76, 79, 76, 74, 72, 79];
     for (const e of ev) {
       const t = when + e.time;
-      if (t < 0) continue;
+      if (!liveTime(actx, t)) continue;
+      try {
       if (e.kind === "tick") tone(actx, dest, t, mood === "matsuri" ? 740 : 980, 0.03, "square", 0.045);
       else if (e.kind === "count") tone(actx, dest, t, 880, 0.06, "square", 0.12);
       else if (e.kind === "kick") tone(actx, dest, t, 168, 0.16, "sine", 0.9, 52);
@@ -527,6 +549,7 @@
         const type = mood === "pop" ? "square" : mood === "matsuri" ? "triangle" : "sawtooth";
         tone(actx, dest, t, f, mood === "dnb" ? 0.1 : 0.16, type, mood === "pop" ? 0.07 : 0.08);
       }
+      } catch (err) { /* keep the rest of the chart sounding */ }
     }
   }
 
@@ -1508,50 +1531,106 @@
     }
   }
 
+  function setTouchLanes(on) {
+    el.touch.classList.toggle("is-on", on);
+    el.touch.hidden = !on;
+  }
+
   function setMode(next) {
     mode = next;
     el.select.classList.toggle("hidden", next !== "select");
     el.result.classList.toggle("hidden", next !== "result");
     el.hud.classList.toggle("hidden", next !== "play");
-    const showTouch = next === "play" && document.body.classList.contains("coarse");
-    el.touch.hidden = !showTouch;
+    setTouchLanes(next === "play" && document.body.classList.contains("coarse"));
+  }
+
+  function clearStartError() {
+    if (!el.startError) return;
+    el.startError.hidden = true;
+    el.startError.textContent = "";
+  }
+
+  function showStartError(err) {
+    if (!el.startError) return;
+    const blocked = err && (err.name === "NotAllowedError" || err.name === "InvalidStateError");
+    el.startError.hidden = false;
+    el.startError.textContent = blocked
+      ? "브라우저가 소리를 막았어요. 화면을 한 번 더 눌러 주세요."
+      : "곡을 시작하지 못했어요. 한 번 더 눌러 주세요.";
+  }
+
+  function armAudio() {
+    const eng = ensureAudio();
+    const resume = eng.ctx.state === "suspended" ? eng.ctx.resume() : Promise.resolve();
+    return { eng, resume };
+  }
+
+  let starting = false;
+
+  function beginSong(id, difficulty, opts) {
+    opts = opts || {};
+    if (!opts.armed) {
+      try {
+        opts.armed = armAudio();
+      } catch (err) {
+        showStartError(err);
+        return Promise.resolve();
+      }
+    }
+    return startSong(id, difficulty, opts);
   }
 
   async function startSong(id, difficulty, opts) {
     opts = opts || {};
-    feverHold = !!opts.fever;
-    lastMileSeen = 0;
-    lastBeatSpawn = -99;
-    const picked = SONGS.find((s) => s.id === id) || SONGS[0];
-    song = picked;
-    diff = difficulty || diff;
-    const eng = ensureAudio();
-    if (eng.ctx.state === "suspended") await eng.ctx.resume();
-    stopNodes();
-    const notes = buildChart(song, diff);
-    session = freshSession(notes);
-    session.judgeAt = 0;
-    particles = [];
-    flashes = [0, 0, 0, 0];
-    origin = eng.ctx.currentTime + 0.12;
-    playing = true;
-    if (!muted) scheduleSong(eng.ctx, eng.input, song, origin);
-    bot = null;
-    if (opts.auto) {
-      const rng = mulberry32(opts.seed || 7);
-      const sd = opts.sd || autoSd;
-      const events = [];
-      for (const n of notes) {
-        const spread = n.kind === "flick" ? sd * 1.15 : sd;
-        events.push({ time: n.time + gauss(rng) * spread, lane: n.lane, down: true, flick: true });
-        if (n.kind === "hold") events.push({ time: n.time + n.dur + gauss(rng) * sd * 0.8, lane: n.lane, down: false });
+    if (starting) return;
+    starting = true;
+    try {
+      clearStartError();
+      feverHold = !!opts.fever;
+      lastMileSeen = 0;
+      lastBeatSpawn = -99;
+      const picked = SONGS.find((s) => s.id === id) || SONGS[0];
+      song = picked;
+      diff = difficulty || diff;
+      const armed = opts.armed || armAudio();
+      await armed.resume;
+      const eng = armed.eng;
+      stopNodes();
+      const notes = buildChart(song, diff);
+      session = freshSession(notes);
+      session.judgeAt = 0;
+      particles = [];
+      flashes = [0, 0, 0, 0];
+      origin = eng.ctx.currentTime + 0.5;
+      if (!muted) scheduleSong(eng.ctx, eng.input, song, origin);
+      bot = null;
+      if (opts.auto) {
+        const rng = mulberry32(opts.seed || 7);
+        const sd = opts.sd || autoSd;
+        const events = [];
+        for (const n of notes) {
+          const spread = n.kind === "flick" ? sd * 1.15 : sd;
+          events.push({ time: n.time + gauss(rng) * spread, lane: n.lane, down: true, flick: true });
+          if (n.kind === "hold") events.push({ time: n.time + n.dur + gauss(rng) * sd * 0.8, lane: n.lane, down: false });
+        }
+        events.sort((a, b) => a.time - b.time || (a.down === b.down ? 0 : a.down ? 1 : -1));
+        bot = events;
       }
-      events.sort((a, b) => a.time - b.time || (a.down === b.down ? 0 : a.down ? 1 : -1));
-      bot = events;
+      playing = true;
+      el.now.textContent = `${song.title} · ${diff.toUpperCase()}`;
+      setMode("play");
+      resize();
+    } catch (err) {
+      playing = false;
+      bot = null;
+      feverHold = false;
+      stopNodes();
+      session = null;
+      setMode("select");
+      showStartError(err);
+    } finally {
+      starting = false;
     }
-    el.now.textContent = `${song.title} · ${diff.toUpperCase()}`;
-    setMode("play");
-    resize();
   }
 
   function finish() {
@@ -1662,7 +1741,7 @@
       body.className = "card-body";
       body.innerHTML = `<h2>${s.title}</h2><span class="bpm">${s.bpm} BPM · ${sec}초</span><p>${s.blurb}</p><div class="hi">${best ? `최고 ${best}` : "아직 기록이 없어요"}</div>`;
       btn.append(cover, body);
-      btn.addEventListener("click", () => startSong(s.id, diff));
+      btn.addEventListener("click", () => beginSong(s.id, diff));
       el.songs.appendChild(btn);
     }
   }
@@ -1767,7 +1846,7 @@
     const coarse = touch || phone;
     document.body.classList.toggle("coarse", coarse);
     document.body.classList.toggle("fine", !coarse);
-    if (mode === "play") el.touch.hidden = !coarse;
+    setTouchLanes(mode === "play" && coarse);
   }
 
   function structuralDrift(songId, difficulty) {
@@ -1926,7 +2005,7 @@
   document.getElementById("btn-quit").addEventListener("click", quit);
   document.getElementById("btn-back").addEventListener("click", quit);
   document.getElementById("btn-retry").addEventListener("click", () => {
-    if (song) startSong(song.id, diff);
+    if (song) beginSong(song.id, diff);
   });
 
   applyCoarse();
@@ -1941,9 +2020,9 @@
 
   window.__kongbeat = {
     songs: () => SONGS.map((s) => s.id),
-    start: (id, difficulty, opts) => startSong(id, difficulty, opts),
+    start: (id, difficulty, opts) => beginSong(id, difficulty, opts),
     fever(id, difficulty) {
-      return startSong(id || "pop", difficulty || diff, { auto: true, fever: true, sd: 0.015, seed: 4 });
+      return beginSong(id || "pop", difficulty || diff, { auto: true, fever: true, sd: 0.015, seed: 4 });
     },
     quit,
     now: () => (playing ? songNow() : null),

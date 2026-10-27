@@ -312,10 +312,35 @@ h1 {
 .touch-lanes {
   position: absolute;
   z-index: 4;
-  display: grid;
+  display: none;
+  pointer-events: none;
   grid-template-columns: repeat(4, 1fr);
   touch-action: none;
 }
+
+.touch-lanes.is-on {
+  display: grid;
+  pointer-events: auto;
+}
+
+.touch-lanes[hidden] {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+.start-error {
+  width: min(560px, 100%);
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: #fff1f4;
+  color: #6e1834;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: 0 8px 24px rgba(20, 8, 40, 0.18);
+}
+
+.start-error[hidden] { display: none !important; }
 
 .touch-lanes button {
   border: 0;
