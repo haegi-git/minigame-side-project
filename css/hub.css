@@ -661,6 +661,53 @@ footer {
   animation-duration: 0.8s;
 }
 
+.tower-preview {
+  background: linear-gradient(180deg, #8ecfff 0%, #fff3c4 62%, #8dca7a 62%, #d7c4a8 100%);
+  overflow: hidden;
+}
+.tower-crane {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 16px;
+  height: 8px;
+  background: #2b2140;
+}
+.tower-cable {
+  position: absolute;
+  left: 28%;
+  top: 20px;
+  width: 3px;
+  height: 42px;
+  background: #2b2140;
+  animation: tower-swing 2.4s ease-in-out infinite;
+  transform-origin: top center;
+}
+.mini-bean.tower-hook {
+  left: 22%;
+  top: 52px;
+  animation: tower-swing 2.4s ease-in-out infinite;
+  transform-origin: 30px -36px;
+}
+.tower-block {
+  position: absolute;
+  height: 16px;
+  border-radius: 8px;
+  border: 2px solid #2b2140;
+  bottom: 18px;
+}
+.tower-block.b1 { left: 34%; width: 54px; background: #ff8fb8; bottom: 18px; }
+.tower-block.b2 { left: 38%; width: 42px; background: #7ce7c4; bottom: 32px; }
+.tower-block.b3 { left: 42%; width: 30px; background: #ffe066; bottom: 46px; animation: tower-wobble 1.2s ease-in-out infinite; }
+@keyframes tower-swing {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(46px); }
+}
+@keyframes tower-wobble {
+  0%, 100% { transform: rotate(-4deg); }
+  50% { transform: rotate(5deg); }
+}
+
 .beat-preview {
   background: linear-gradient(180deg, #2b2140 0%, #5a3d86 42%, #ff8fb8 42%, #ffe066 100%);
 }

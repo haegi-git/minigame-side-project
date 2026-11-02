@@ -41,6 +41,36 @@
       mood: "matsuri",
       blurb: "축제 북과 피리. 발이 먼저 굴러요.",
     },
+    {
+      id: "chill",
+      title: "콩밭 산책",
+      bpm: 92,
+      bars: 20,
+      lead: 2,
+      mood: "chill",
+      chart: "sparse",
+      blurb: "느긋한 오후. 발걸음이 먼저 쉬어가요.",
+    },
+    {
+      id: "city",
+      title: "네온 콩카페",
+      bpm: 128,
+      bars: 24,
+      lead: 2,
+      mood: "city",
+      chart: "sync",
+      blurb: "도시 밤의 펑키한 베이스. 네온이 박자를 켜요.",
+    },
+    {
+      id: "sky",
+      title: "성층권 비트",
+      bpm: 156,
+      bars: 28,
+      lead: 2,
+      mood: "sky",
+      chart: "rush",
+      blurb: "구름 위의 속사포. 손이 숨을 고를 틈이 적어요.",
+    },
   ];
 
   const DIFFS = [
@@ -53,6 +83,9 @@
     pop: [0, 2, 1, 3, 2, 0, 3, 1],
     dnb: [0, 1, 3, 2, 1, 3, 0, 2],
     matsuri: [0, 1, 0, 2, 3, 2, 3, 1],
+    chill: [0, 2, 0, 1, 3, 1, 2, 3],
+    city: [0, 3, 1, 2, 2, 0, 3, 1],
+    sky: [0, 1, 2, 3, 1, 0, 3, 2],
   };
 
   function q(t) {
@@ -92,6 +125,54 @@
       const chorus = phase >= 0.3 && phase < 0.82;
       const finale = phase >= 0.82;
       const intro = bar === 0;
+      if (song.chart === "sparse") {
+        if (diff === "easy") {
+          if (intro) continue;
+          for (let b = 0; b < 4; b++) {
+            if (b === 3 && bar % 2 === 1) continue;
+            add(bar, b * 4, laneOf(bar, b), "tap", 0);
+          }
+        } else if (diff === "normal") {
+          for (let s = 0; s < (chorus || finale ? 8 : 4); s++) {
+            if (intro && s % 2 === 1) continue;
+            const step16 = chorus || finale ? s * 2 : s * 4;
+            const kind = s === 0 && bar % 4 === 2 ? "hold" : s === 6 ? "flick" : "tap";
+            add(bar, step16, laneOf(bar, s), kind, kind === "hold" ? 4 : 0);
+          }
+        } else {
+          for (let s = 0; s < 8; s++) {
+            const lane = laneOf(bar, s);
+            if (s === 0 && bar % 2 === 0) add(bar, 0, lane, "hold", 4);
+            else if ((chorus || finale) && s >= 4) {
+              add(bar, s * 2, lane, s === 6 ? "flick" : "tap", 0);
+              add(bar, s * 2 + 1, lane, "tap", 0);
+            } else add(bar, s * 2, lane, "tap", 0);
+          }
+        }
+        continue;
+      }
+      if (song.chart === "sync" && diff === "normal") {
+        const count = chorus || finale ? 8 : 4;
+        for (let s = 0; s < count; s++) {
+          const step16 = (chorus || finale) ? s * 2 + (s % 2) : s * 4;
+          const lane = laneOf(bar, s);
+          if (intro && s % 2 === 1) continue;
+          if (chorus && s === 0 && bar % 2 === 0) add(bar, 0, lane, "hold", 4);
+          else if (s === 5 && bar % 3 === 1) add(bar, Math.min(14, step16), lane, "flick", 0);
+          else add(bar, Math.min(15, step16), lane, "tap", 0);
+        }
+        continue;
+      }
+      if (song.chart === "rush" && diff === "normal") {
+        for (let s = 0; s < 8; s++) {
+          if (intro && s % 2 === 1) continue;
+          const lane = laneOf(bar, s);
+          if (s === 0 && bar % 2 === 0) add(bar, 0, lane, "hold", 2);
+          else if (s === 6 && bar % 4 === 2) add(bar, 12, lane, "flick", 0);
+          else add(bar, s * 2, lane, "tap", 0);
+        }
+        continue;
+      }
       if (diff === "easy") {
         if (intro) continue;
         for (let b = 0; b < 4; b++) add(bar, b * 4, laneOf(bar, b), "tap", 0);
@@ -113,7 +194,7 @@
         }
         continue;
       }
-      const fillAt = song.id === "dnb" ? 4 : 2;
+      const fillAt = song.chart === "rush" ? 3 : song.id === "dnb" ? 4 : 2;
       for (let s = 0; s < 8; s++) {
         const step16 = s * 2;
         const lane = laneOf(bar, s);
@@ -169,12 +250,14 @@
     for (let i = 0; i < total; i++) {
       const t = beatTime(song, i / 4);
       const six = i % 16;
+      const mood = song.mood;
       ev.push({ time: t, kind: "tick" });
-      if (six % 4 === 0) ev.push({ time: t, kind: song.mood === "matsuri" ? "don" : "kick" });
-      if (six === 4 || six === 12) ev.push({ time: t, kind: song.mood === "matsuri" ? "ka" : "snare" });
-      if (six % 2 === 0) ev.push({ time: t, kind: "hat" });
+      if (six % 4 === 0) ev.push({ time: t, kind: mood === "matsuri" ? "don" : mood === "chill" ? "soft" : "kick" });
+      if (six === 4 || six === 12) ev.push({ time: t, kind: mood === "matsuri" ? "ka" : mood === "chill" ? "brush" : "snare" });
+      if (mood === "chill" ? six % 4 === 0 : six % 2 === 0) ev.push({ time: t, kind: "hat" });
+      if (mood === "sky" && (six === 2 || six === 6 || six === 10 || six === 14)) ev.push({ time: t, kind: "hat" });
       if (six % 4 === 0) ev.push({ time: t, kind: "bass", bar: Math.floor(i / 16), step: six / 4 });
-      if (six % 2 === 0) ev.push({ time: t, kind: "lead", bar: Math.floor(i / 16), step: six / 2 });
+      if ((mood === "chill" ? six % 4 === 0 : six % 2 === 0)) ev.push({ time: t, kind: "lead", bar: Math.floor(i / 16), step: six / 2 });
     }
     for (let i = 1; i <= 4; i++) {
       const t = q(song.lead - i * beatDur(song));
@@ -520,15 +603,25 @@
   function scheduleSong(actx, dest, song, when) {
     const ev = audioEvents(song);
     const mood = song.mood;
-    const bassRoots = mood === "dnb" ? [38, 41, 36, 43] : mood === "matsuri" ? [57, 60, 57, 53] : [48, 55, 57, 53];
-    const leadPool = mood === "matsuri" ? [69, 72, 74, 76, 79, 76, 74, 72] : mood === "dnb" ? [60, 63, 67, 70, 67, 63, 58, 63] : [72, 74, 76, 79, 76, 74, 72, 79];
+    const pal = {
+      chill: { bass: [53, 55, 48, 50], lead: [72, 76, 79, 74, 76, 72, 69, 74] },
+      city: { bass: [43, 41, 46, 38], lead: [67, 70, 74, 77, 74, 70, 67, 72] },
+      sky: { bass: [40, 45, 47, 42], lead: [76, 79, 83, 84, 79, 76, 74, 79] },
+      dnb: { bass: [38, 41, 36, 43], lead: [60, 63, 67, 70, 67, 63, 58, 63] },
+      matsuri: { bass: [57, 60, 57, 53], lead: [69, 72, 74, 76, 79, 76, 74, 72] },
+      pop: { bass: [48, 55, 57, 53], lead: [72, 74, 76, 79, 76, 74, 72, 79] },
+    }[mood] || { bass: [48, 55, 57, 53], lead: [72, 74, 76, 79, 76, 74, 72, 79] };
+    const bassRoots = pal.bass;
+    const leadPool = pal.lead;
     for (const e of ev) {
       const t = when + e.time;
       if (!liveTime(actx, t)) continue;
       try {
-      if (e.kind === "tick") tone(actx, dest, t, mood === "matsuri" ? 740 : 980, 0.03, "square", 0.045);
+      if (e.kind === "tick") tone(actx, dest, t, mood === "matsuri" ? 740 : mood === "chill" ? 620 : 980, 0.03, "square", mood === "chill" ? 0.03 : 0.045);
       else if (e.kind === "count") tone(actx, dest, t, 880, 0.06, "square", 0.12);
-      else if (e.kind === "kick") tone(actx, dest, t, 168, 0.16, "sine", 0.9, 52);
+      else if (e.kind === "soft") tone(actx, dest, t, 98, 0.22, "sine", 0.45, 54);
+      else if (e.kind === "brush") burst(actx, dest, t, 0.08, 0.12, true);
+      else if (e.kind === "kick") tone(actx, dest, t, 168, 0.16, "sine", mood === "sky" ? 0.75 : 0.9, 52);
       else if (e.kind === "don") {
         tone(actx, dest, t, 110, 0.28, "sine", 0.95, 48);
         burst(actx, dest, t, 0.12, 0.25, false);
@@ -536,18 +629,22 @@
         tone(actx, dest, t, 196, 0.1, "triangle", 0.25);
         burst(actx, dest, t, 0.12, 0.45, false);
       } else if (e.kind === "ka") burst(actx, dest, t, 0.07, 0.4, true);
-      else if (e.kind === "hat") burst(actx, dest, t, mood === "dnb" ? 0.035 : 0.04, mood === "dnb" ? 0.16 : 0.1, true);
+      else if (e.kind === "hat") burst(actx, dest, t, mood === "dnb" || mood === "sky" ? 0.03 : 0.04, mood === "chill" ? 0.05 : mood === "dnb" || mood === "sky" ? 0.14 : 0.1, true);
       else if (e.kind === "bass") {
         const root = bassRoots[e.bar % bassRoots.length];
         const f = midi(root);
-        if (mood === "dnb") {
-          tone(actx, dest, t, f, 0.28, "sawtooth", 0.16);
-          tone(actx, dest, t, f * 1.01, 0.28, "sawtooth", 0.12);
-        } else tone(actx, dest, t, f, mood === "matsuri" ? 0.22 : 0.18, "triangle", 0.28);
+        if (mood === "dnb" || mood === "sky") {
+          tone(actx, dest, t, f, mood === "sky" ? 0.2 : 0.28, "sawtooth", mood === "sky" ? 0.12 : 0.16);
+          tone(actx, dest, t, f * 1.01, mood === "sky" ? 0.2 : 0.28, "sawtooth", 0.1);
+        } else if (mood === "city") tone(actx, dest, t, f, 0.12, "square", 0.09);
+        else if (mood === "chill") tone(actx, dest, t, f, 0.28, "sine", 0.16);
+        else tone(actx, dest, t, f, mood === "matsuri" ? 0.22 : 0.18, "triangle", 0.28);
       } else if (e.kind === "lead") {
-        const f = midi(leadPool[(e.bar * 3 + e.step) % leadPool.length] + (mood === "pop" && e.bar % 8 >= 4 ? 12 : 0));
-        const type = mood === "pop" ? "square" : mood === "matsuri" ? "triangle" : "sawtooth";
-        tone(actx, dest, t, f, mood === "dnb" ? 0.1 : 0.16, type, mood === "pop" ? 0.07 : 0.08);
+        const f = midi(leadPool[(e.bar * 3 + e.step) % leadPool.length] + ((mood === "pop" || mood === "city") && e.bar % 8 >= 4 ? 12 : 0));
+        const type = mood === "pop" || mood === "city" ? "square" : mood === "matsuri" || mood === "chill" ? "triangle" : "sawtooth";
+        const peak = mood === "chill" ? 0.045 : mood === "pop" ? 0.07 : mood === "city" ? 0.06 : 0.08;
+        tone(actx, dest, t, f, mood === "dnb" || mood === "sky" ? 0.1 : 0.16, type, peak);
+        if (mood === "sky") tone(actx, dest, t, f * 1.005, 0.1, "sawtooth", 0.04);
       }
       } catch (err) { /* keep the rest of the chart sounding */ }
     }
@@ -595,6 +692,39 @@
         spot: ["rgba(255,196,96,0.5)", "rgba(255,90,120,0.36)"],
         crowd: "#2a1020",
         accent: "#ffe066",
+      };
+    }
+    if (mood === "chill") {
+      return {
+        mood,
+        sky: ["#d9f6e4", "#fff6c8"],
+        floor: ["#cfe8c2", "#f3e2b0"],
+        led: "#7dcaa0",
+        spot: ["rgba(255,248,210,0.55)", "rgba(140,210,170,0.35)"],
+        crowd: "#5d8a62",
+        accent: "#7ce7c4",
+      };
+    }
+    if (mood === "city") {
+      return {
+        mood,
+        sky: ["#24143f", "#ff6b9a"],
+        floor: ["#3a2158", "#1b1230"],
+        led: "#ff8ad4",
+        spot: ["rgba(255,120,190,0.45)", "rgba(120,220,255,0.35)"],
+        crowd: "#1a1028",
+        accent: "#ffd0ea",
+      };
+    }
+    if (mood === "sky") {
+      return {
+        mood,
+        sky: ["#081226", "#3a6ea8"],
+        floor: ["#16345c", "#071018"],
+        led: "#d7f4ff",
+        spot: ["rgba(180,230,255,0.45)", "rgba(255,210,120,0.28)"],
+        crowd: "#071018",
+        accent: "#9ad7ff",
       };
     }
     return {
@@ -826,6 +956,9 @@
     if (theme.mood === "pop") drawLemons(b, phase);
     if (theme.mood === "dnb") drawLasers(b, phase, pulse);
     if (theme.mood === "matsuri") drawLanterns(b, phase);
+    if (theme.mood === "chill") drawHills(b, phase);
+    if (theme.mood === "city") drawWindows(b, phase);
+    if (theme.mood === "sky") drawConstellation(b, phase);
 
     const sweep = Math.sin(phase * 0.65) * 0.55;
     drawSpot(b.x + b.w * 0.28, b.y + 8, -0.55 + sweep, b.h * 0.78, theme.spot[0]);
@@ -838,8 +971,8 @@
     if (theme.mood === "matsuri") drawTaiko(b.x + b.w * 0.8, b.y + b.h * 0.62, Math.min(70, b.w * 0.16), phase);
 
     const ground = b.y + b.h - Math.max(28, b.h * 0.12);
-    const colors = theme.mood === "dnb" ? ["#7ce7c4", "#d4b3ff", "#8ec5ff"] : theme.mood === "matsuri" ? ["#ff8fb8", "#ffe066", "#fffdf8"] : ["#ff8fb8", "#7ce7c4", "#ffe066"];
-    const acc = theme.mood === "dnb" ? "phones" : theme.mood === "matsuri" ? "band" : "shades";
+    const colors = theme.mood === "dnb" ? ["#7ce7c4", "#d4b3ff", "#8ec5ff"] : theme.mood === "matsuri" ? ["#ff8fb8", "#ffe066", "#fffdf8"] : theme.mood === "city" ? ["#ff8ad4", "#7ce7c4", "#ffe066"] : theme.mood === "sky" ? ["#9ad7ff", "#fffdf8", "#d4b3ff"] : theme.mood === "chill" ? ["#b7ebc8", "#ffe066", "#ff8fb8"] : ["#ff8fb8", "#7ce7c4", "#ffe066"];
+    const acc = theme.mood === "dnb" || theme.mood === "city" ? "phones" : theme.mood === "matsuri" ? "band" : "shades";
     const scale = Math.min(layout.portrait ? 0.62 : 0.92, b.h / 280);
     const special = milestoneOn();
     for (let i = 0; i < 3; i++) {
@@ -1307,11 +1440,49 @@
     ctx.restore();
   }
 
+  function drawHills(b, phase) {
+    ctx.fillStyle = "rgba(120,190,130,0.35)";
+    ctx.beginPath();
+    ctx.moveTo(b.x, b.y + b.h * 0.42);
+    ctx.quadraticCurveTo(b.x + b.w * 0.3, b.y + b.h * 0.22 + Math.sin(phase) * 4, b.x + b.w * 0.62, b.y + b.h * 0.4);
+    ctx.quadraticCurveTo(b.x + b.w * 0.82, b.y + b.h * 0.28, b.x + b.w, b.y + b.h * 0.46);
+    ctx.lineTo(b.x + b.w, b.y + b.h * 0.5);
+    ctx.lineTo(b.x, b.y + b.h * 0.5);
+    ctx.fill();
+  }
+
+  function drawWindows(b, phase) {
+    for (let i = 0; i < 10; i++) {
+      const x = b.x + 24 + (i % 5) * (b.w * 0.16);
+      const y = b.y + 18 + Math.floor(i / 5) * 28;
+      ctx.fillStyle = Math.sin(phase * 2 + i) > 0 ? "#ffe066" : "#ff8ad4";
+      ctx.globalAlpha = 0.75;
+      ctx.fillRect(x, y, 14, 18);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawConstellation(b, phase) {
+    ctx.fillStyle = "#fffdf8";
+    for (let i = 0; i < 16; i++) {
+      const x = b.x + ((i * 97) % Math.max(20, b.w - 20));
+      const y = b.y + 12 + ((i * 53) % Math.max(16, b.h * 0.4));
+      ctx.globalAlpha = 0.45 + 0.4 * Math.abs(Math.sin(phase + i));
+      ctx.beginPath();
+      ctx.arc(x, y, i % 4 === 0 ? 2.2 : 1.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
   function paintCover(g, song) {
     const w = 640;
     const h = 360;
     if (song.id === "dnb") paintClubCover(g, w, h);
     else if (song.id === "matsuri") paintMatsuriCover(g, w, h);
+    else if (song.id === "chill") paintChillCover(g, w, h);
+    else if (song.id === "city") paintCityCover(g, w, h);
+    else if (song.id === "sky") paintSkyCover(g, w, h);
     else paintPopCover(g, w, h);
     g.fillStyle = "rgba(18,8,28,0.72)";
     rr(g, 28, 250, 360, 78, 18);
@@ -1429,6 +1600,68 @@
     g.ellipse(500, 230, 52, 34, 0, 0, Math.PI * 2);
     g.fill();
     coverDancers(g, ["#ff8fb8", "#ffe066", "#fff6ea"], 160, 270, "band");
+  }
+
+  function paintChillCover(g, w, h) {
+    const sky = g.createLinearGradient(0, 0, 0, h);
+    sky.addColorStop(0, "#c8f3dd");
+    sky.addColorStop(1, "#fff3c4");
+    g.fillStyle = sky;
+    g.fillRect(0, 0, w, h);
+    g.fillStyle = "#8dca7a";
+    g.beginPath();
+    g.moveTo(0, 250);
+    g.quadraticCurveTo(160, 160, 320, 240);
+    g.quadraticCurveTo(480, 300, 640, 200);
+    g.lineTo(640, 360);
+    g.lineTo(0, 360);
+    g.fill();
+    g.fillStyle = "#fffdf8";
+    g.beginPath();
+    g.arc(500, 90, 36, 0, Math.PI * 2);
+    g.fill();
+    coverDancers(g, ["#b7ebc8", "#ffe066", "#ff8fb8"], 80, 250, "shades");
+  }
+
+  function paintCityCover(g, w, h) {
+    const sky = g.createLinearGradient(0, 0, 0, h);
+    sky.addColorStop(0, "#1b1030");
+    sky.addColorStop(1, "#ff6b9a");
+    g.fillStyle = sky;
+    g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 9; i++) {
+      const bh = 70 + ((i * 47) % 120);
+      g.fillStyle = i % 2 ? "#2a1848" : "#3a2060";
+      g.fillRect(20 + i * 70, 280 - bh, 54, bh);
+      g.fillStyle = "#ffe066";
+      for (let y = 280 - bh + 10; y < 270; y += 18) g.fillRect(30 + i * 70, y, 8, 10);
+    }
+    coverDancers(g, ["#ff8ad4", "#7ce7c4", "#ffe066"], 70, 250, "phones");
+  }
+
+  function paintSkyCover(g, w, h) {
+    const sky = g.createLinearGradient(0, 0, 0, h);
+    sky.addColorStop(0, "#07101e");
+    sky.addColorStop(1, "#3d78b4");
+    g.fillStyle = sky;
+    g.fillRect(0, 0, w, h);
+    g.fillStyle = "#fffdf8";
+    for (let i = 0; i < 28; i++) {
+      g.globalAlpha = 0.5 + (i % 5) * 0.1;
+      g.beginPath();
+      g.arc((i * 83) % w, (i * 47) % 200, i % 6 === 0 ? 2.4 : 1.2, 0, Math.PI * 2);
+      g.fill();
+    }
+    g.globalAlpha = 1;
+    g.fillStyle = "#d7ecff";
+    g.beginPath();
+    g.arc(470, 120, 48, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = "#9ad7ff";
+    g.beginPath();
+    g.arc(492, 112, 40, 0, Math.PI * 2);
+    g.fill();
+    coverDancers(g, ["#9ad7ff", "#fffdf8", "#d4b3ff"], 70, 260, "shades");
   }
 
   function coverDancers(g, colors, x, y, accessory) {

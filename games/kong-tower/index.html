@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <title>콩타워 - 심심타임</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🫘</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="../../css/lupin.css" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="view"></canvas>
+      <a class="back" href="../../index.html">← 게임 선택</a>
+      <button id="mute" class="icon-btn" type="button" aria-label="소리 끄기">🔊</button>
+
+      <section id="title">
+        <p class="kicker">심심타임</p>
+        <h1>콩타워</h1>
+        <p class="lead">흔들리는 갈고리에 매달린 콩을 쌓아 올리세요. 너무 삐져나오면 잘리거나 떨어집니다.</p>
+        <button id="btn-start" type="button">쌓기 시작</button>
+        <p class="hint">클릭 · 스페이스 · 화면 탭</p>
+      </section>
+
+      <div id="hud" class="hidden">
+        <div class="stat">
+          <span>높이</span>
+          <b id="height">0</b>
+        </div>
+        <div class="stat">
+          <span>점수</span>
+          <b id="score">0</b>
+        </div>
+        <div id="combo" class="combo">0 COMBO</div>
+        <div id="lives" class="lives" aria-label="목숨"></div>
+        <div id="next" class="next">
+          <span>다음</span>
+          <i id="next-bean"></i>
+          <b id="next-name">콩</b>
+        </div>
+        <div id="wind" class="wind hidden">돌풍이 옵니다</div>
+      </div>
+
+      <section id="result" class="hidden">
+        <div class="sheet">
+          <p class="kicker" id="res-kicker">CLEAR</p>
+          <div id="res-zone" class="zone-pill">마을</div>
+          <h2 id="res-height">0층</h2>
+          <p id="res-sub" class="lead"></p>
+          <p class="score-xl"><span>SCORE</span> <b id="res-score">0</b></p>
+          <ul id="res-stats" class="stats"></ul>
+          <div class="actions">
+            <button id="btn-retry" type="button">다시</button>
+            <button id="btn-title" type="button" class="ghost">처음으로</button>
+          </div>
+        </div>
+      </section>
+    </div>
+    <script src="./sim.js"></script>
+    <script src="./game.js"></script>
+    <script src="../../js/lupin.js" defer></script>
+  </body>
+</html>
