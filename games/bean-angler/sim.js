@@ -164,6 +164,12 @@
     return HOOK_WINDOW[fish.rarity] + bait * 0.01;
   }
 
+  function openingWindow(state) {
+    const base = hookWindow(state.fish, state.gear.bait);
+    if (state.catches === 0 && state.misses === 0 && state.fish.rarity === "common") return base + 0.14;
+    return base;
+  }
+
   function flightDur(power) {
     return 0.48 + power * 0.28;
   }
@@ -175,7 +181,7 @@
   function biteTiming(state) {
     if (!state.fish) return null;
     const telegraph = 0.24;
-    const window = hookWindow(state.fish, state.gear.bait);
+    const window = openingWindow(state);
     return { telegraph, window, open: state.biteAt + telegraph, close: state.biteAt + telegraph + window };
   }
 
@@ -601,14 +607,19 @@
       }
 
       const fish = state.fish;
-      const telegraph = 0.24;
-      const window = hookWindow(fish, state.gear.bait);
-      const open = state.biteAt + telegraph;
-      const close = open + window;
-      if (state.waitT >= state.biteAt && state.waitT < open) state.message = "곧 물어요";
+      const timing = biteTiming(state);
+      const window = timing.window;
+      const open = timing.open;
+      const close = timing.close;
+      const firstBite = state.catches === 0 && state.misses === 0;
+      if (state.waitT >= state.biteAt && state.waitT < open && state.message !== "아직") state.message = "곧 물어요";
       if (state.waitT >= open && state.waitT <= close) state.message = "챔";
       if (inp.tap) {
         if (state.waitT >= state.biteAt && state.waitT < open) {
+          if (firstBite) {
+            state.message = "아직";
+            return;
+          }
           missFish(state, "너무 일렀다");
           return;
         }

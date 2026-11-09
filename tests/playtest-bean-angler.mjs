@@ -39,6 +39,56 @@ if (skilled.catches < 4) problems.push(`skilled catches ${skilled.catches}`);
 if (geared.skilled.score < skilled.score + 800) problems.push("upgrades did not raise skilled score");
 if (stock.hunter.legendaryRate > 0.8) problems.push(`hunter legendary too easy ${stock.hunter.legendaryRate}`);
 
+function driveToWait(seed) {
+  const state = Sim.create(seed, { rod: 0, reel: 0, bait: 0 });
+  const tap = { hold: false, tap: true, release: false };
+  const hold = { hold: true, tap: false, release: false };
+  const release = { hold: false, tap: false, release: true };
+  const idle = { hold: false, tap: false, release: false };
+  Sim.tick(state, 0.016, tap);
+  for (let i = 0; i < 12; i++) Sim.tick(state, 0.016, hold);
+  Sim.tick(state, 0.016, release);
+  for (let i = 0; i < 8; i++) Sim.tick(state, 0.016, idle);
+  Sim.tick(state, 0.016, tap);
+  let guard = 0;
+  while (state.phase !== "wait" && state.phase !== "done" && guard < 400) {
+    Sim.tick(state, 0.016, idle);
+    guard += 1;
+  }
+  return state;
+}
+
+let first = null;
+for (let seed = 1; seed < 40 && !first; seed++) {
+  const state = driveToWait(seed);
+  if (state.phase === "wait" && state.hazard !== "gull" && state.fish && state.fish.rarity === "common") first = state;
+}
+if (!first) problems.push("could not reach a common first bite");
+else {
+  const base = Sim.hookWindow(first.fish, 0);
+  const open = Sim.biteTiming(first).window;
+  if (open < base + 0.13) problems.push(`first common window ${open} not extended`);
+  const idle = { hold: false, tap: false, release: false };
+  while (first.phase === "wait" && first.waitT < first.biteAt + 0.05) Sim.tick(first, 0.016, idle);
+  Sim.tick(first, 0.016, { hold: false, tap: true, release: false });
+  if (first.phase !== "wait" || first.misses !== 0) problems.push("first early tap was punished");
+  const timing = Sim.biteTiming(first);
+  while (first.phase === "wait" && first.waitT < timing.open + 0.02) Sim.tick(first, 0.016, idle);
+  Sim.tick(first, 0.016, { hold: false, tap: true, release: false });
+  if (first.phase !== "reel") problems.push("first bite did not hook after an early tap");
+}
+
+const later = Sim.create(11, { rod: 0, reel: 0, bait: 0 });
+later.catches = 1;
+later.fish = Sim.FISH.find((f) => f.rarity === "legendary");
+later.phase = "wait";
+later.waitT = later.biteAt + 0.05;
+later.gear = { rod: 0, reel: 0, bait: 0 };
+const legendWindow = Sim.biteTiming(later).window;
+if (Math.abs(legendWindow - 0.2) > 0.001) problems.push(`legend window changed ${legendWindow}`);
+Sim.tick(later, 0.016, { hold: false, tap: true, release: false });
+if (later.phase !== "recover" || later.misses !== 1) problems.push("early tap after a catch was not punished");
+
 const samples = [1, 2, 3].map((seed) => ({
   depthShallow: Math.round(Sim.depthOf(0.4, 46, 0) * 1000) / 1000,
   depthDeep: Math.round(Sim.depthOf(0.72, 50, 0) * 1000) / 1000,

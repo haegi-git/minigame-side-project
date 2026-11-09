@@ -72,6 +72,9 @@
   const pointers = new Set();
   let keyHold = false;
   let prevDown = false;
+  let tapLatch = false;
+  let releaseLatch = false;
+  let biteCue = false;
   let screen = "title";
   let state = null;
   let save = loadSave();
@@ -157,6 +160,9 @@
   function startRound() {
     state = Sim.create((Date.now() ^ (Math.random() * 1e9)) >>> 0, gear());
     awarded = false;
+    tapLatch = false;
+    releaseLatch = false;
+    biteCue = false;
     prevDown = pointers.size > 0 || keyHold;
     show("play");
     ensureAudio();
@@ -195,10 +201,20 @@
 
   function readInput() {
     const down = pointers.size > 0 || keyHold;
-    const tap = down && !prevDown;
-    const release = !down && prevDown;
+    const tap = tapLatch || (down && !prevDown);
+    const release = releaseLatch || (!down && prevDown);
+    tapLatch = false;
+    releaseLatch = false;
     prevDown = down;
     return { hold: down, tap, release };
+  }
+
+  function notePress(alreadyDown) {
+    if (!alreadyDown) tapLatch = true;
+  }
+
+  function noteRelease() {
+    if (pointers.size === 0 && !keyHold) releaseLatch = true;
   }
 
   function ensureAudio() {
@@ -382,13 +398,23 @@
       hot = true;
       action = "연타";
     } else if (telegraph) {
-      banner = "찌가 흔들립니다";
+      banner = state.message === "아직" ? "아직! 기다렸다가 챔" : "아직 누르지 마세요";
       warn = true;
+      action = "준비";
     } else if (biting) {
-      banner = "지금 챔!";
+      const holding = pointers.size > 0 || keyHold;
+      banner = holding ? "손을 떼고 다시 챔!" : "지금 챔!";
       hot = true;
       action = "챔질";
-    } else if (phase === "wait") banner = "입질을 기다리세요. 미리 누르면 도망갑니다";
+      if (!biteCue) {
+        biteCue = true;
+        blip(880, 0.07, "square", 0.04);
+      }
+    } else if (phase === "wait") {
+      banner = state.catches === 0 && state.misses === 0 ? "첫 입질 · 흔들리면 기다리고, 빨간 글씨에 챔" : "입질을 기다리세요";
+      action = "대기";
+    }
+    if (!biting) biteCue = false;
     if (phase === "reel" && state.fish) {
       banner = state.hazard === "puffer"
         ? "복어다! 줄을 늦춰 털어내세요"
@@ -989,7 +1015,6 @@
   function drawLineAndLure(t) {
     if (!state || state.phase === "ready" || state.phase === "charge" || state.phase === "angle") return;
     const pose = rodPose();
-    const bob = Math.sin(t * 1.6) * 7;
     const tip = project(pose.tip.x, pose.tip.y);
     const lure = lurePoint();
     const end = project(lure.x, lure.y);
@@ -1004,13 +1029,18 @@
 
     if (state.phase !== "flight") {
       const float = project(lure.x, Math.min(0, lure.y));
-      const dip = state.phase === "wait" && state.waitT > state.biteAt ? 14 : 0;
-      ctx.fillStyle = "#ff5d73";
+      const timing = state.phase === "wait" ? Sim.biteTiming(state) : null;
+      const biting = timing && state.waitT >= timing.open && state.waitT <= timing.close;
+      const telegraph = timing && state.waitT >= state.biteAt && state.waitT < timing.open;
+      const dip = biting ? 24 : 0;
+      const wobble = telegraph ? Math.sin(t * 38) * 6 * float.scale : 0;
+      const bob = (biting ? 10 : 7) * float.scale;
+      ctx.fillStyle = biting ? "#ff2f55" : "#ff5d73";
       ctx.beginPath();
-      ctx.arc(float.sx, float.sy + dip, 7 * float.scale, 0, Math.PI * 2);
+      ctx.arc(float.sx + wobble, float.sy + dip, bob, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = "#fff";
-      ctx.fillRect(float.sx - 2, float.sy - 16 * float.scale + dip, 4, 12 * float.scale);
+      ctx.fillRect(float.sx + wobble - 2, float.sy - 16 * float.scale + dip, 4, 12 * float.scale);
     }
 
     const jig = ctx.createRadialGradient(end.sx - 2, end.sy - 2, 1, end.sx, end.sy, 8 * end.scale);
@@ -1231,18 +1261,33 @@
     requestAnimationFrame(frame);
   }
 
-  function bindPointer(el) {
-    el.addEventListener("pointerdown", (e) => {
-      if (screen !== "play") return;
-      if (e.target.closest && e.target.closest("a, #mute")) return;
-      e.preventDefault();
-      el.setPointerCapture?.(e.pointerId);
-      pointers.add(e.pointerId);
-    });
-    const release = (e) => pointers.delete(e.pointerId);
-    el.addEventListener("pointerup", release);
-    el.addEventListener("pointercancel", release);
+  function trackedPointer(e) {
+    if (e.pointerType === "mouse" && e.button !== 0) return false;
+    const t = e.target;
+    if (t && t.closest && t.closest("a, #mute, #title, #result")) return false;
+    return true;
   }
+
+  function pressPointer(id) {
+    const wasDown = pointers.size > 0 || keyHold;
+    pointers.add(id);
+    notePress(wasDown);
+  }
+
+  function releasePointer(id) {
+    if (!pointers.has(id)) return;
+    pointers.delete(id);
+    noteRelease();
+  }
+
+  window.addEventListener("pointerdown", (e) => {
+    if (screen !== "play" || !trackedPointer(e)) return;
+    e.preventDefault();
+    pressPointer(e.pointerId);
+    try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* pointer already gone */ }
+  });
+  window.addEventListener("pointerup", (e) => releasePointer(e.pointerId));
+  window.addEventListener("pointercancel", (e) => releasePointer(e.pointerId));
 
   ui.shop.addEventListener("click", (e) => {
     const key = e.target && e.target.dataset && e.target.dataset.buy;
@@ -1258,19 +1303,23 @@
   });
   window.addEventListener("keydown", (e) => {
     if (e.code !== "Space") return;
-    e.preventDefault();
     if (e.repeat || screen !== "play") return;
+    e.preventDefault();
+    const wasDown = pointers.size > 0 || keyHold;
     keyHold = true;
+    notePress(wasDown);
   });
   window.addEventListener("keyup", (e) => {
-    if (e.code === "Space") keyHold = false;
+    if (e.code !== "Space" || !keyHold) return;
+    keyHold = false;
+    noteRelease();
   });
   window.addEventListener("blur", () => {
+    const wasDown = pointers.size > 0 || keyHold;
     keyHold = false;
     pointers.clear();
+    if (wasDown) releaseLatch = true;
   });
-  bindPointer(canvas);
-  bindPointer(ui.action);
   window.addEventListener("resize", resize);
   resize();
   renderShop();
