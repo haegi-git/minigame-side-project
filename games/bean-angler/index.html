@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <title>콩낚시왕 - 심심타임</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🫘</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="../../css/lupin.css" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="view"></canvas>
+      <a class="back" href="../../index.html">← 게임 선택</a>
+      <button id="mute" class="icon-btn" type="button" aria-label="소리 끄기">🔊</button>
+
+      <section id="title">
+        <div class="sheet title-sheet">
+          <p class="kicker">심심타임</p>
+          <h1>콩낚시왕</h1>
+          <p class="lead">배 위에서 캐스팅하고, 입질에 챔질한 뒤, 줄이 끊기지 않게 장력을 지키며 끌어올리세요.</p>
+          <div class="purse"><span>보유</span> <b id="coins">0</b></div>
+          <div id="shop" class="shop"></div>
+          <button id="btn-start" type="button">출항</button>
+          <p class="hint">홀드로 힘 · 다시 눌러 각도 · 입질에 챔 · 릴은 누르고 떼기</p>
+          <p class="hint sub">90초 · 마우스 · 스페이스 · 터치</p>
+        </div>
+      </section>
+
+      <div id="hud" class="hidden">
+        <div class="topbar">
+          <div class="stat">
+            <span>시간</span>
+            <b id="time">90</b>
+          </div>
+          <div class="stat">
+            <span>점수</span>
+            <b id="score">0</b>
+          </div>
+          <div class="stat">
+            <span>콤보</span>
+            <b id="combo">0</b>
+          </div>
+          <div id="zone" class="zone">얕은 물</div>
+          <div id="lives" class="lives" aria-label="남은 줄"></div>
+        </div>
+        <div id="banner" class="banner">캐스팅할 준비를 하세요</div>
+        <div id="meters" class="meters">
+          <div id="cast-box" class="meter-card hidden">
+            <div class="meter-label"><span id="cast-kicker">파워</span><b id="cast-value">얕은 물</b></div>
+            <div class="track"><i id="cast-fill"></i></div>
+          </div>
+          <div id="ten-box" class="meter-card hidden">
+            <div class="meter-label"><span>장력</span><b id="ten-label">안전</b></div>
+            <div class="track tension">
+              <i id="sweet"></i>
+              <i id="ten-fill"></i>
+            </div>
+          </div>
+        </div>
+        <button id="action" type="button">홀드</button>
+      </div>
+
+      <section id="result" class="hidden">
+        <div class="sheet">
+          <p class="kicker" id="res-kicker">TIME</p>
+          <div id="res-rank" class="zone">견습</div>
+          <p class="score-xl"><span>SCORE</span> <b id="res-score">0</b></p>
+          <p id="res-sub" class="lead"></p>
+          <ul id="res-stats" class="stats"></ul>
+          <ul id="res-fish" class="fish-log"></ul>
+          <p id="res-coins" class="coins-line"></p>
+          <div class="actions">
+            <button id="btn-retry" type="button">다시 출항</button>
+            <button id="btn-title" type="button" class="ghost">상점</button>
+          </div>
+        </div>
+      </section>
+    </div>
+    <script src="./sim.js"></script>
+    <script src="./game.js"></script>
+    <script src="../../js/lupin.js" defer></script>
+  </body>
+</html>
