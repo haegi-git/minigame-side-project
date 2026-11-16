@@ -119,6 +119,17 @@
     return { best: next, isBest: score > prev && score > 0 };
   }
 
+  function applyTableLayout(pad) {
+    topPad = pad;
+    const availH = Math.max(120, H - topPad - bottomPad - backH);
+    const availW = Math.max(120, W - 8);
+    scale = Math.min(availW / Sim.TABLE_W, availH / Sim.TABLE_H);
+    tableCssW = Sim.TABLE_W * scale;
+    tableCssH = Sim.TABLE_H * scale;
+    ox = (W - tableCssW) / 2;
+    oy = topPad + backH;
+  }
+
   function resize() {
     const r = canvas.getBoundingClientRect();
     W = Math.max(280, r.width);
@@ -127,16 +138,24 @@
     canvas.width = Math.round(W * dpr);
     canvas.height = Math.round(H * dpr);
     const wantsTouch = W < 900 || window.matchMedia("(pointer: coarse)").matches;
-    topPad = 6;
     bottomPad = wantsTouch ? 84 : 8;
     backH = Math.round(Math.min(122, Math.max(100, H * 0.112)));
-    const availH = Math.max(120, H - topPad - bottomPad - backH);
-    const availW = Math.max(120, W - 8);
-    scale = Math.min(availW / Sim.TABLE_W, availH / Sim.TABLE_H);
-    tableCssW = Sim.TABLE_W * scale;
-    tableCssH = Sim.TABLE_H * scale;
-    ox = (W - tableCssW) / 2;
-    oy = topPad + backH;
+    applyTableLayout(6);
+    const backEl = document.querySelector(".back");
+    const backRight = backEl ? backEl.getBoundingClientRect().right : 140;
+    const actionsLeft = W - 108;
+    const backboxLeft = ox - 14;
+    const backboxRight = ox + tableCssW + 14;
+    const covered = backboxLeft < backRight + 4 || backboxRight > actionsLeft - 4;
+    if (covered) {
+      const mute = document.getElementById("mute");
+      const row = Math.max(
+        backEl ? backEl.getBoundingClientRect().bottom : 0,
+        mute ? mute.getBoundingClientRect().bottom : 0,
+        52
+      );
+      applyTableLayout(Math.ceil(row) + 8);
+    }
     staticStamp = 0;
   }
 
@@ -1795,7 +1814,7 @@
     },
   };
 
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { staticStamp = 0; });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => resize());
   resize();
   setMode("title");
   requestAnimationFrame(frame);
