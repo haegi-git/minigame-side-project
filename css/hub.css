@@ -756,6 +756,64 @@ footer {
   animation-duration: 0.48s;
 }
 
+.pinball-preview {
+  background: radial-gradient(circle at 50% 18%, #ffb3d4 0%, #8a3d9a 38%, #241444 100%);
+}
+
+.pb-table {
+  position: absolute;
+  left: 28%;
+  right: 28%;
+  top: 14px;
+  bottom: 12px;
+  border: 3px solid #ffe56a;
+  border-radius: 46px 46px 16px 16px;
+  box-shadow: 0 0 0 3px #2b2140, inset 0 0 16px rgba(255, 229, 106, 0.35);
+  overflow: hidden;
+}
+
+.pb-bump {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #2b2140;
+}
+
+.pb-bump.a { left: 38%; top: 28px; background: #7cf7d4; }
+.pb-bump.b { left: 18%; top: 48px; background: #ffe56a; }
+.pb-bump.c { right: 16%; top: 46px; background: #ff8fb8; }
+
+.pb-flip {
+  position: absolute;
+  bottom: 18px;
+  width: 28px;
+  height: 8px;
+  border-radius: 8px;
+  background: #ff5f9a;
+  border: 2px solid #2b2140;
+}
+
+.pb-flip.left { left: 18%; transform: rotate(18deg); }
+.pb-flip.right { right: 18%; transform: rotate(-18deg); }
+
+.pb-ball {
+  position: absolute;
+  left: 46%;
+  top: 36px;
+  width: 12px;
+  height: 14px;
+  border-radius: 50% 50% 46% 46%;
+  background: #ff8fb8;
+  border: 2px solid #2b2140;
+  animation: pb-bounce 1.3s ease-in-out infinite;
+}
+
+@keyframes pb-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(28px); }
+}
+
 .angler-preview {
   background: linear-gradient(180deg, #8fd8ff 0 34%, #ffe7a3 34% 46%, #1cb4d6 46%, #0a4f86 100%);
 }
