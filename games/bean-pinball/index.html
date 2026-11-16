@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <title>콩핀볼 - 심심타임</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🫘</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="../../css/lupin.css" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="view"></canvas>
+      <a class="back" href="../../index.html">← 게임 선택</a>
+      <div class="top-actions">
+        <button id="pause-btn" class="icon-btn hidden" type="button" aria-label="일시정지">❚❚</button>
+        <button id="mute" class="icon-btn" type="button" aria-label="소리 끄기">🔊</button>
+      </div>
+
+      <section id="title">
+        <div class="sheet">
+          <p class="kicker">심심타임</p>
+          <h1>콩핀볼</h1>
+          <p class="lead">콩을 플립퍼로 받아 범퍼와 램프, K-O-N-G를 노리세요. 네 글자를 끝내고 램프로 콩나물 프렌지를 여세요.</p>
+          <p class="best-line">최고 <b id="title-best">0</b></p>
+          <ul class="howto">
+            <li><b>왼쪽 플립퍼</b> Z · ← · 왼쪽 Shift</li>
+            <li><b>오른쪽 플립퍼</b> / · → · 오른쪽 Shift</li>
+            <li><b>플런저</b> Space · ↓ 길게 눌러 세기. 가운데쯤이면 스킬샷</li>
+            <li><b>넛지</b> N · ↑ · 너무 자주 누르면 틸트</li>
+            <li>위쪽 레인은 플립퍼를 누를 때마다 불이 한 칸 옮겨집니다</li>
+          </ul>
+          <p class="hint">화면 왼쪽·오른쪽을 누르면 플립퍼. 발사와 넛지는 아래 버튼.</p>
+          <button id="btn-start" type="button">플레이</button>
+        </div>
+      </section>
+
+      <div id="hud" class="hidden">
+        <div class="hud-pips" id="pips" aria-label="남은 볼"></div>
+        <div class="hud-mult" id="mult">x1</div>
+        <div class="tilt" id="tilt" aria-label="틸트">
+          <i></i><i></i><i></i>
+        </div>
+      </div>
+
+      <section id="pause" class="hidden">
+        <div class="sheet">
+          <p class="kicker">PAUSE</p>
+          <h2>일시정지</h2>
+          <p class="lead">플립퍼는 멈춰 있어요. 계속하면 그 공 그대로입니다.</p>
+          <div class="actions">
+            <button id="btn-resume" type="button">계속하기</button>
+            <button id="btn-quit" type="button" class="ghost">타이틀로</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="result" class="hidden">
+        <div class="sheet">
+          <p class="kicker">GAME OVER</p>
+          <h2>게임 오버</h2>
+          <p class="score-xl"><span>점수</span> <b id="res-score">0</b></p>
+          <p class="best-line" id="res-best">최고 0</p>
+          <ul id="res-stats" class="stats"></ul>
+          <div class="actions">
+            <button id="btn-retry" type="button">다시하기</button>
+            <button id="btn-title" type="button" class="ghost">처음으로</button>
+          </div>
+        </div>
+      </section>
+
+      <div id="touch" aria-hidden="true">
+        <button id="btn-nudge" type="button">넛지</button>
+        <button id="btn-plunge" type="button">발사</button>
+      </div>
+    </div>
+    <script src="./sim.js"></script>
+    <script src="./game.js"></script>
+    <script src="../../js/lupin.js" defer></script>
+  </body>
+</html>
