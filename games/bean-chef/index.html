@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <title>콩셰프 키친 - 심심타임</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🫘</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="../../css/lupin.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="chrome">
+        <a class="back" href="../../index.html">← 게임 선택</a>
+        <div class="chrome-title" id="chrome-title">콩셰프 키친</div>
+        <button id="mute" type="button" aria-label="소리 끄기">🔊</button>
+      </header>
+
+      <div id="hud" class="hidden">
+        <div class="stats">
+          <div class="stat"><span>시간</span><b id="time">2:30</b></div>
+          <div class="stat"><span>점수</span><b id="score">0</b></div>
+          <div class="stat"><span>별</span><b id="live-stars">☆☆☆</b></div>
+          <div class="stat" id="combo-box"><span>콤보</span><b id="combo">0</b></div>
+          <div class="held" id="held">손: 비어 있음</div>
+        </div>
+        <div id="orders"></div>
+      </div>
+
+      <div id="stage">
+        <canvas id="view"></canvas>
+        <div id="banner"></div>
+      </div>
+
+      <div id="controls">
+        <div id="stick" role="application" aria-label="이동 조이스틱"><div id="nub"></div></div>
+        <button id="act" type="button">잡기</button>
+      </div>
+
+      <section id="title">
+        <div class="panel">
+          <p class="kicker">심심타임</p>
+          <h1>콩셰프 키친</h1>
+          <p class="lead">따뜻한 저녁 주방. 콩 셰프는 걸어 다녀야 하고, 바라보는 바로 옆 조리대만 만질 수 있어요.</p>
+          <div id="days"></div>
+          <ul class="howto">
+            <li>WASD · 방향키로 걷습니다. 탭해서 순간이동은 없어요.</li>
+            <li>스페이스 · E · 잡기 버튼. 도마는 꾹 눌러 썰어요.</li>
+            <li>불은 노란 완벽에 끄세요. 타면 연기가 나고, 싱크에 버려요.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="pause" class="hidden">
+        <div class="panel slim">
+          <p class="kicker">일시정지</p>
+          <h2>불이 잠깐 낮아졌어요</h2>
+          <p class="lead">주문 시간도 같이 멈춥니다.</p>
+          <button id="btn-resume" type="button">이어서 조리</button>
+        </div>
+      </section>
+
+      <section id="result" class="hidden">
+        <div class="panel">
+          <p class="kicker" id="res-kicker">하루 종료</p>
+          <div id="res-stars" class="big-stars"></div>
+          <h2 id="res-title">오픈 키친</h2>
+          <p class="score-xl"><span>점수</span> <b id="res-score">0</b></p>
+          <p id="res-sub" class="lead"></p>
+          <ul id="res-stats"></ul>
+          <div class="actions">
+            <button id="btn-retry" type="button">같은 날 다시</button>
+            <button id="btn-next" type="button">다음 날</button>
+            <button id="btn-days" type="button" class="ghost">하루 선택</button>
+          </div>
+        </div>
+      </section>
+    </div>
+    <script src="./sim.js"></script>
+    <script src="./bot.js"></script>
+    <script src="./game.js"></script>
+    <script src="../../js/lupin.js" defer></script>
+  </body>
+</html>

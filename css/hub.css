@@ -921,6 +921,103 @@ footer {
   }
 }
 
+.chef-preview {
+  background: linear-gradient(180deg, #ffd7a8 0%, #f3a56a 42%, #e7c39a 42%, #c98455 100%);
+}
+
+.chef-counter {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  top: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(#fff1dc, #e7b27a);
+  border: 3px solid #2b2140;
+}
+
+.chef-pan {
+  position: absolute;
+  left: 58%;
+  top: 62px;
+  width: 36px;
+  height: 16px;
+  border-radius: 0 0 16px 16px;
+  background: #3a2418;
+  border: 3px solid #2b2140;
+  box-shadow: 16px 4px 0 -2px #6a4030;
+}
+
+.chef-steam {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.75);
+  animation: chef-steam 1.4s ease-out infinite;
+}
+
+.chef-steam.a { left: 64%; top: 48px; }
+.chef-steam.b { left: 72%; top: 54px; animation-delay: 0.4s; }
+
+.chef-ticket {
+  position: absolute;
+  right: 16px;
+  top: 18px;
+  width: 54px;
+  height: 36px;
+  background: #fffdf8;
+  border: 3px solid #2b2140;
+  border-radius: 8px;
+  box-shadow: 3px 3px 0 #2b2140;
+}
+
+.chef-ticket::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  top: 8px;
+  height: 6px;
+  border-radius: 4px;
+  background: #ff8a5b;
+}
+
+.chef-ticket::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  right: 14px;
+  top: 18px;
+  height: 6px;
+  border-radius: 4px;
+  background: #7ce7c4;
+}
+
+.mini-bean.chef-mini {
+  left: 22%;
+  bottom: 28px;
+  background: linear-gradient(#ffd0dc, #ff7aa2);
+  animation-duration: 0.7s;
+}
+
+.mini-bean.chef-mini::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: -10px;
+  height: 12px;
+  background: #fff;
+  border: 3px solid #2b2140;
+  border-radius: 8px 8px 3px 3px;
+}
+
+@keyframes chef-steam {
+  from { transform: translateY(0); opacity: 0.8; }
+  to { transform: translateY(-16px); opacity: 0; }
+}
+
 @media (max-width: 640px) {
   .hero {
     padding-top: max(36px, env(safe-area-inset-top));
