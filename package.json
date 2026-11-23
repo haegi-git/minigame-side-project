@@ -1,0 +1,10 @@
+{
+  "name": "simsim-time",
+  "private": true,
+  "scripts": {
+    "test:chef": "node tests/playtest-bean-chef.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.65.1"
+  }
+}
