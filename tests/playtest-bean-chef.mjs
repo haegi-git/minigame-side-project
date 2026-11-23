@@ -278,13 +278,18 @@ async function main() {
     });
     if (big.dx > 12 || big.maxStep > 10) failures.push("huge dt teleported " + JSON.stringify(big));
 
-    await page.evaluate(() => BeanChef.startDay(1, 6));
-    await page.evaluate(() => BeanChef.pump(0.2));
-    const t1 = await page.evaluate(() => BeanChef.getState().time);
-    await page.evaluate(() => window.dispatchEvent(new Event("blur")));
-    const paused = await page.evaluate(() => BeanChef.isPaused());
-    await page.evaluate(() => BeanChef.frame(0.6));
-    const t2 = await page.evaluate(() => BeanChef.getState().time);
+    const blurCheck = await page.evaluate(() => {
+      BeanChef.startDay(1, 6);
+      BeanChef.pump(0.2);
+      const t1 = BeanChef.getState().time;
+      window.dispatchEvent(new Event("blur"));
+      const paused = BeanChef.isPaused();
+      BeanChef.frame(0.6);
+      return { t1, t2: BeanChef.getState().time, paused };
+    });
+    const t1 = blurCheck.t1;
+    const t2 = blurCheck.t2;
+    const paused = blurCheck.paused;
     if (!paused || t2 !== t1) failures.push("blur did not pause " + t1 + " " + t2 + " " + paused);
     await page.click("#btn-resume");
     await page.evaluate(() => BeanChef.frame(0.4));
@@ -384,46 +389,53 @@ async function shoot(browser, base) {
   await desk.screenshot({ path: path.join(ART, "bean_chef_title.png") });
 
   await desk.evaluate(() => {
-    BeanChef.startDay(4, 7);
+    BeanChef.startDay(2, 7);
     const dt = 1 / 60;
-    for (let i = 0; i < 32 * 60; i++) BeanChefSim.step(BeanChef.getState(), { x: 0, y: 0, action: false }, dt);
-    const S = BeanChefSim;
+    for (let i = 0; i < 18 * 60; i++) BeanChefSim.step(BeanChef.getState(), { x: 0, y: 0, action: false }, dt);
     const st = BeanChef.getState();
-    const egg = st.stations.find((s) => s.ing === "egg");
+    const board = st.stations.find((s) => s.kind === "board");
+    board.item = { kind: "ing", id: "tofu", chopped: false };
+    board.chop = 0.62;
     const pan = st.stations.find((s) => s.kind === "pan");
-    function go(station) {
-      const opt = S.interactOptions(BeanChef.getState(), station)[0];
-      const path = S.route(BeanChef.getState(), opt.c, opt.r) || [];
-      path.forEach((tile) => {
-        const goal = S.center(tile.c, tile.r);
-        for (let i = 0; i < 90; i++) {
-          const chef = BeanChef.getState().chef;
-          const here = S.tileOf(chef.x, chef.y);
-          if (here.c === tile.c && here.r === tile.r && Math.hypot(chef.vx, chef.vy) < 24) break;
-          const dx = goal.x - chef.x;
-          const dy = goal.y - chef.y;
-          const dist = Math.hypot(dx, dy) || 1;
-          BeanChefSim.step(BeanChef.getState(), { x: dx / dist, y: dy / dist, action: false }, dt);
-        }
-      });
-      for (let i = 0; i < 8; i++) BeanChefSim.step(BeanChef.getState(), { x: 0, y: 0, action: false, face: opt.face }, dt);
-      BeanChefSim.step(BeanChef.getState(), { x: 0, y: 0, action: true, face: opt.face }, dt);
-      BeanChefSim.step(BeanChef.getState(), { x: 0, y: 0, action: false, face: opt.face }, dt);
-    }
-    go(egg);
-    go(pan);
-    go(egg);
-    go(pan);
-    for (let i = 0; i < 20 * 60; i++) {
-      const panNow = BeanChef.getState().stations.find((s) => s.kind === "pan");
-      if (panNow.phase === "burnt") break;
-      BeanChefSim.step(BeanChef.getState(), { x: 0, y: 0, action: false }, dt);
-    }
-    BeanChef.frame(0);
+    pan.phase = "cook";
+    pan.timer = 2.4;
+    pan.recipe = "gyeran";
+    pan.ings = [
+      { kind: "ing", id: "egg", chopped: false },
+      { kind: "ing", id: "egg", chopped: false },
+    ];
+    const pot = st.stations.find((s) => s.kind === "pot");
+    pot.phase = "perfect";
+    pot.timer = 1.2;
+    pot.recipe = "dubu";
+    pot.ings = [
+      { kind: "ing", id: "tofu", chopped: true },
+      { kind: "ing", id: "pepper", chopped: true },
+    ];
+    const plate = st.stations.find((s) => s.kind === "plate");
+    plate.done = "kimbap";
+    plate.perfect = true;
+    plate.plateIngs = [];
+    if (st.orders[0]) st.orders[0].patience = st.orders[0].maxPatience * 0.16;
+    if (st.orders[1]) st.orders[1].patience = st.orders[1].maxPatience * 0.42;
+    st.combo = 3;
+    st.score = 860;
+    st.chef.x = 10.5 * 48;
+    st.chef.y = 3.5 * 48;
+    st.chef.vx = 40;
+    st.chef.vy = 0;
+    st.chef.dir = 0;
+    st.chef.hold = { kind: "ing", id: "seaweed", chopped: false };
+    st.chef.phase = 1.2;
+    BeanChef.tick({ x: 0, y: 0, action: false, face: 0 }, dt);
+    document.getElementById("banner").className = "";
   });
   await desk.screenshot({ path: path.join(ART, "bean_chef_gameplay_desktop.png") });
 
-  await desk.evaluate(() => BeanChef.runBot({ day: 1, profile: "good", seed: 1, present: true }));
+  await desk.evaluate(() => {
+    BeanChef.runBot({ day: 1, profile: "good", seed: 1, present: true });
+    document.getElementById("banner").className = "";
+  });
   await desk.screenshot({ path: path.join(ART, "bean_chef_results.png") });
   await desk.close();
 
@@ -466,11 +478,11 @@ async function shoot(browser, base) {
   const dir = "/tmp/chef-frames";
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(dir, { recursive: true });
-  const fps = 20;
+  const fps = 24;
   const total = 36 * fps;
   for (let i = 0; i < total; i++) {
     await vp.evaluate(() => {
-      const step = 1 / 20;
+      const step = 1 / 24;
       if (BeanChef.getState().phase !== "play") return;
       const input = BeanChefBot.update(window.__bot, BeanChef.getState(), step);
       BeanChef.tick(input, step);
@@ -485,7 +497,7 @@ async function shoot(browser, base) {
   await run("ffmpeg", [
     "-y", "-framerate", String(fps), "-i", path.join(dir, "%04d.jpg"),
     "-vf", "scale=1280:720",
-    "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "28", "-an",
+    "-c:v", "libx264", "-pix_fmt", "yuv420p", "-profile:v", "high", "-crf", "26", "-an",
     "-movflags", "+faststart", out,
   ]);
   let size = fs.statSync(out).size;
